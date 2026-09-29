@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
+<title>Web Quest Infinity</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0b0f19;--bg2:#1a1d2e;--cyan:#00f2fe;--purple:#7928ca;--green:#00dfa2;
+  --pink:#ff007a;--gold:#ffd166;--text:#e0e6f0;--muted:#8b93a7;
+  --glass:rgba(26,29,46,.88);--glow:0 0 20px rgba(0,242,254,.35);
+  --border:rgba(0,242,254,.2);
+  --hud-h:48px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-l:env(safe-area-inset-left,0px);
+  --safe-r:env(safe-area-inset-right,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;height:100dvh;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%}
+body{background:radial-gradient(ellipse at 20% 20%,#1a1d2e 0%,#0b0f19 60%);padding:var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l)}
+.screen{display:none;height:100%;height:100dvh;width:100%;max-width:100vw;position:absolute;inset:0;flex-direction:column;overflow:hidden}
+.screen.active{display:flex}
+
+/* HUD */
+.hud{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;min-height:var(--hud-h);background:var(--glass);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);z-index:100;flex-shrink:0;flex-wrap:wrap;gap:6px}
+.logo{font-weight:800;font-size:1.05rem;background:linear-gradient(90deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.rank-badge{background:linear-gradient(135deg,var(--purple),var(--pink));padding:3px 10px;border-radius:16px;font-size:.7rem;font-weight:600}
+.stat{display:flex;align-items:center;gap:4px;font-size:.8rem}.stat span{color:var(--cyan);font-weight:700}.stat.coins span{color:var(--gold)}
+
+/* Buttons — touch-friendly */
+.btn{border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;transition:all .2s;font-size:.86rem;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none}
+.btn-primary{background:linear-gradient(135deg,var(--cyan),#00b4d8);color:#0b0f19;box-shadow:var(--glow)}
+.btn-primary:hover{transform:translateY(-1px)}
+.btn-success{background:linear-gradient(135deg,var(--green),#00b894);color:#0b0f19}
+.btn-check{background:linear-gradient(135deg,#7928ca,#ff007a);color:#fff}
+.btn-check:hover{transform:translateY(-1px)}
+.btn-check:disabled,.btn-success:disabled,.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.btn-ghost{background:transparent;border:1px solid rgba(0,242,254,.3);color:var(--cyan)}
+.btn-ghost:hover{background:rgba(0,242,254,.1)}
+.btn-sm{padding:6px 10px;font-size:.78rem;min-height:36px}
+.btn-lg{padding:12px 24px;font-size:1rem;min-height:48px}
+.flow-hint{font-size:.7rem;color:var(--muted);padding:2px 4px 0;width:100%;line-height:1.3}
+.preview-empty{color:#94a3b8;font-size:.85rem;padding:16px;text-align:center}
+
+/* Home */
+#screen-home{align-items:center;justify-content:center;padding:16px;overflow-y:auto}
+.home-card{background:var(--glass);backdrop-filter:blur(16px);border:1px solid rgba(0,242,254,.25);border-radius:20px;padding:28px 24px;text-align:center;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.home-card h1{font-size:clamp(1.5rem,5vw,2.2rem);margin-bottom:6px;background:linear-gradient(90deg,var(--cyan),var(--purple),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.home-card p{color:var(--muted);margin-bottom:18px;line-height:1.5;font-size:.9rem}
+.home-stats{display:flex;justify-content:center;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.home-stat{text-align:center;min-width:64px}.home-stat .val{font-size:1.3rem;font-weight:800;color:var(--cyan)}.home-stat .val.gold{color:var(--gold)}.home-stat .lbl{font-size:.65rem;color:var(--muted)}
+.home-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* Map */
+#screen-map{overflow:hidden}
+#map-scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px;padding-bottom:calc(16px + var(--safe-b))}
+.map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;max-width:1200px;margin:0 auto}
+.world-card{background:var(--glass);border:1px solid rgba(0,242,254,.15);border-radius:14px;padding:14px;cursor:pointer;transition:all .25s;position:relative;min-height:110px}
+.world-card:hover:not(.locked){border-color:var(--cyan);transform:translateY(-2px);box-shadow:var(--glow)}
+.world-card.locked{opacity:.42;cursor:not-allowed}.world-card.completed{border-color:var(--green)}
+.world-card .num{font-size:.62rem;color:var(--muted);margin-bottom:2px}
+.world-card h3{font-size:.95rem;margin-bottom:4px;line-height:1.25}
+.world-card .theme{font-size:.74rem;color:var(--cyan);margin-bottom:8px}
+.world-meta{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:6px}
+.world-progress{height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.world-progress-bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple));border-radius:2px;transition:width .3s}
+
+/* Mission layout — desktop side-by-side */
+#screen-mission{flex-direction:row;min-height:0}
+.mission-left{width:50%;display:flex;flex-direction:column;border-right:1px solid rgba(0,242,254,.15);background:rgba(11,15,25,.85);overflow:hidden;min-width:0;min-height:0}
+.mission-right{width:50%;display:flex;flex-direction:column;background:#0a0e14;min-width:0;min-height:0;overflow:hidden}
+.mission-header{padding:8px 12px;background:var(--glass);border-bottom:1px solid rgba(0,242,254,.15);display:flex;justify-content:space-between;align-items:flex-start;flex-shrink:0;gap:8px}
+.mission-title{font-weight:700;font-size:.9rem;line-height:1.3}
+.mission-meta{font-size:.72rem;color:var(--muted)}
+.mission-workspace{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.mission-instruction{font-size:.85rem;line-height:1.45;color:var(--text);background:rgba(0,242,254,.06);border:1px solid rgba(0,242,254,.12);border-radius:8px;padding:8px 10px}
+.skills-bar{display:flex;flex-wrap:wrap;gap:4px}
+.tag-skill{font-size:.65rem;padding:2px 7px;border-radius:10px;background:rgba(121,40,202,.35);color:#e9d5ff}
+
+/* Blocks */
+.blocks-panel,.code-panel{display:flex;flex-direction:column;flex:1;min-height:0;gap:6px}
+.panel-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.assembly-zone,.inventory-zone{min-height:72px;border:1px dashed rgba(0,242,254,.25);border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;background:rgba(0,0,0,.25)}
+.assembly-zone{min-height:88px;background:rgba(0,242,254,.04)}
+.assembly-zone.drag-over{border-color:var(--cyan);background:rgba(0,242,254,.1)}
+.inventory-zone{max-height:140px;overflow-y:auto}
+.code-block{background:rgba(0,242,254,.12);border:1px solid rgba(0,242,254,.3);border-radius:6px;padding:6px 10px;font-family:Consolas,Monaco,monospace;font-size:.78rem;cursor:grab;user-select:none;touch-action:manipulation}
+.code-block.tag{background:rgba(0,223,162,.12);border-color:rgba(0,223,162,.35)}
+.code-block.css-prop{background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.3)}
+.code-block:active{cursor:grabbing}
+#code-editor{flex:1;min-height:100px;width:100%;background:#0d1117;border:1px solid rgba(0,242,254,.2);border-radius:8px;color:#e6edf3;font-family:Consolas,Monaco,monospace;font-size:16px;padding:10px;resize:none;outline:none;line-height:1.5} /* 16px avoids iOS zoom */
+.hints-row{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Actions bar — always visible */
+.actions{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:10px 12px;padding-bottom:calc(10px + var(--safe-b));
+  border-top:1px solid rgba(0,242,254,.2);
+  background:rgba(8,10,18,.95);backdrop-filter:blur(10px);
+  flex-shrink:0;z-index:30;
+}
+.actions .btn-primary,
+.actions .btn-check,
+.actions .btn-success{flex:1 1 auto;min-width:calc(33% - 8px)}
+
+/* Preview */
+.preview-wrap{flex:1;display:flex;flex-direction:column;min-height:0;padding:10px;overflow:hidden}
+.preview-label{font-size:.72rem;color:var(--muted);margin-bottom:6px;flex-shrink:0}
+.preview-frame{flex:1;background:#fff;border-radius:8px;overflow:hidden;border:1px solid rgba(0,242,254,.15);min-height:120px}
+.preview-frame iframe{width:100%;height:100%;border:none;display:block}
+.feedback{margin-top:8px;padding:8px 10px;border-radius:8px;font-size:.8rem;display:none;background:rgba(0,0,0,.45);border:1px solid var(--gold);flex-shrink:0;max-height:30vh;overflow-y:auto;white-space:pre-wrap;line-height:1.35}
+.feedback.show{display:block}.feedback.ok{border-color:var(--green);color:var(--green)}.feedback.fail{border-color:#ff4d6d;color:#ff8a9a}
+
+/* Modal / toast */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(6px);padding:max(16px, var(--safe-t)) max(16px, var(--safe-r)) max(16px, var(--safe-b)) max(16px, var(--safe-l));overflow-y:auto}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid rgba(0,242,254,.3);border-radius:16px;padding:22px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6);max-height:min(90dvh,640px);overflow-y:auto}
+.modal h2{margin-bottom:8px;font-size:1.25rem}
+.toast{position:fixed;bottom:calc(20px + var(--safe-b));left:50%;transform:translateX(-50%) translateY(120px);background:var(--bg2);border:1px solid var(--cyan);border-radius:10px;padding:10px 18px;z-index:2100;transition:transform .3s;font-weight:600;font-size:.85rem;max-width:min(92vw,420px);text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.sync-indicator{font-size:.7rem;padding:2px 8px;border-radius:8px}
+.sync-indicator.synced{color:var(--green)}.sync-indicator.saving{color:var(--cyan)}.sync-indicator.offline{color:var(--gold)}.sync-indicator.error{color:#ff4d6d}
+input.login-field{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(0,242,254,.25);background:rgba(0,0,0,.35);color:var(--text);font-size:16px;outline:none;margin-bottom:10px}
+
+/* ========== TABLET ≤900px ========== */
+@media (max-width:900px){
+  #screen-mission{flex-direction:column}
+  .mission-left{
+    width:100%;
+    flex:1 1 58%;
+    min-height:0;
+    border-right:none;
+    border-bottom:1px solid rgba(0,242,254,.15);
+  }
+  .mission-right{
+    width:100%;
+    flex:0 0 38%;
+    min-height:160px;
+    max-height:42dvh;
+  }
+  .actions .btn{min-height:44px}
+  .map-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .home-card{padding:22px 16px}
+}
+
+/* ========== PHONE ≤640px ========== */
+@media (max-width:640px){
+  .hud{padding:4px 8px;gap:4px}
+  .logo{font-size:.95rem}
+  .stat{font-size:.72rem}
+  .rank-badge{font-size:.62rem;padding:2px 7px}
+  .hud .btn-sm{min-height:32px;padding:4px 8px;font-size:.72rem}
+
+  .mission-left{flex:1 1 55%;}
+  .mission-right{flex:0 0 34%;min-height:140px;max-height:36dvh}
+  .mission-header{padding:6px 8px}
+  .mission-title{font-size:.82rem}
+  .mission-workspace{padding:8px}
+  .mission-instruction{font-size:.8rem;padding:7px 8px}
+
+  /* Primary action row: 3 equal buttons */
+  .actions{
+    gap:6px;
+    padding:8px;
+    padding-bottom:calc(8px + var(--safe-b));
+  }
+  .actions .btn-primary,
+  .actions .btn-check,
+  .actions .btn-success{
+    flex:1 1 calc(33.33% - 6px);
+    min-width:0;
+    padding:8px 4px;
+    font-size:.72rem;
+    min-height:46px;
+  }
+  .actions .btn-ghost{
+    flex:1 1 calc(50% - 6px);
+    min-height:40px;
+  }
+  .flow-hint{font-size:.65rem;order:10}
+
+  .assembly-zone{min-height:64px}
+  .inventory-zone{max-height:100px;min-height:56px}
+  .code-block{padding:8px 10px;font-size:.75rem;min-height:36px} /* bigger touch targets */
+
+  .preview-wrap{padding:6px}
+  .preview-frame{min-height:100px}
+  .feedback{font-size:.75rem;max-height:22vh;padding:6px 8px}
+
+  .map-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+  .world-card{padding:10px;min-height:96px}
+  .world-card h3{font-size:.85rem}
+
+  .modal{padding:18px 14px;border-radius:14px}
+  .modal h2{font-size:1.1rem}
+  .btn-lg{width:100%;min-height:48px}
+}
+
+/* ========== SMALL PHONE ≤380px ========== */
+@media (max-width:380px){
+  .actions .btn-primary,
+  .actions .btn-check,
+  .actions .btn-success{
+    font-size:.68rem;
+    padding:8px 2px;
+  }
+  .map-grid{grid-template-columns:1fr 1fr}
+  .home-card h1{font-size:1.35rem}
+}
+
+/* ========== SHORT VIEWPORT (landscape phones) ========== */
+@media (max-height:500px) and (orientation:landscape){
+  #screen-mission{flex-direction:row}
+  .mission-left{width:55%;height:100%;border-right:1px solid rgba(0,242,254,.15);border-bottom:none}
+  .mission-right{width:45%;height:100%;max-height:none;min-height:0}
+  .mission-header{padding:4px 8px}
+  .actions{padding:6px;gap:4px}
+  .actions .btn{min-height:36px;padding:6px 8px;font-size:.72rem}
+  .assembly-zone{min-height:48px}
+  .inventory-zone{max-height:72px}
+  .preview-frame{min-height:80px}
+  .hud{min-height:36px;padding:2px 8px}
+}
+
+/* Prefers reduced motion */
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+
+/* Focus visibility for keyboard/a11y */
+.btn:focus-visible,.code-block:focus-visible,input:focus-visible,textarea:focus-visible{
+  outline:2px solid var(--cyan);outline-offset:2px
+}
+#fixed-html{background:#0a0e14;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:.78rem;color:var(--green);white-space:pre-wrap;margin:6px 0}
+.css-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.css-row select{min-height:40px;background:#1a1d2e;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:.82rem;flex:1;min-width:90px}
+.rule-chip{display:inline-block;background:rgba(0,242,254,.1);border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin:3px;font-family:monospace;font-size:.8rem;cursor:pointer}
+#cs-info{font-size:.78rem;color:var(--gold);min-height:1.2em;margin-top:6px}
+.feedback{white-space:pre-line}
+</style>
+</head>
+<body>
+
+<div id="screen-home" class="screen active">
+  <div class="home-card">
+    <div style="font-size:2.6rem;margin-bottom:6px">🚀</div>
+    <h1>Web Quest Infinity</h1>
+    <p>Стань архитектором веба.<br>Изучай HTML &amp; CSS через миссии и живой preview.<br><span style="font-size:.8rem;color:var(--cyan)">12 миров · HTML и CSS · облачный прогресс</span><br><span id="guest-banner" style="font-size:.78rem;color:var(--gold);display:none">Гость: доступен только мир 1 · войдите, чтобы сохранить прогресс</span></p>
+    <div class="home-stats">
+      <div class="home-stat"><div class="val" id="home-xp">0</div><div class="lbl">XP</div></div>
+      <div class="home-stat"><div class="val gold" id="home-coins">0</div><div class="lbl">Coins</div></div>
+      <div class="home-stat"><div class="val" id="home-stars">0</div><div class="lbl">⭐</div></div>
+      <div class="home-stat"><div class="val" id="home-rank">Novice</div><div class="lbl">Ранг</div></div>
+      <div class="home-stat"><div class="val" id="home-streak">0</div><div class="lbl">🔥</div></div>
+    </div>
+    <div class="home-actions">
+      <button class="btn btn-primary btn-lg" onclick="showMap()">▶ Приключение</button>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-ghost btn-sm" id="btn-login" onclick="openLoginModal()">🔐 Войти</button>
+      <button class="btn btn-ghost btn-sm" id="btn-logout" onclick="logoutStudent()" style="display:none">🚪 Выйти</button>
+      <span id="auth-status" style="font-size:.75rem;color:var(--muted)"></span>
+      <span class="sync-indicator synced" id="sync-indicator">☁ Локально</span>
+    </div>
+  </div>
+</div>
+
+<div id="screen-map" class="screen">
+  <div class="hud">
+    <div style="display:flex;align-items:center;gap:12px"><div class="logo">Web Quest</div><div class="rank-badge" id="map-rank">Web Novice</div></div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="stat coins">🪙 <span id="map-coins">0</span></div>
+      <div class="stat">⭐ <span id="map-stars">0</span></div>
+      <div class="stat">⚡ <span id="map-xp">0</span></div>
+      <div class="stat">🔥 <span id="map-streak">0</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="showHome()">← Меню</button>
+    </div>
+  </div>
+  <div id="map-scroll" class="map-container">
+    <h2 style="text-align:center;margin:4px 0 12px;font-size:clamp(1rem,3vw,1.3rem)">Карта миров · 12 Worlds</h2>
+    <div class="map-grid" id="world-grid"></div>
+  </div>
+</div>
+
+<div id="screen-mission" class="screen">
+    <div class="mission-left">
+    <div class="mission-header">
+      <div style="min-width:0;flex:1">
+        <div class="mission-title" id="m-title">Миссия</div>
+        <div class="mission-meta" id="m-meta"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="exitMission()" aria-label="Назад к карте">← Карта</button>
+    </div>
+    <div class="mission-workspace">
+      <div class="mission-instruction" id="m-instruction"></div>
+      <div class="skills-bar" id="skills-bar"></div>
+      <pre id="fixed-html" style="display:none"></pre>
+      <div id="css-mode" class="blocks-panel" style="display:none"></div>
+      <div id="blocks-mode" class="blocks-panel">
+        <div class="panel-label">Сборка</div>
+        <div class="assembly-zone" id="assembly-zone" role="list" aria-label="Сборка кода"></div>
+        <div class="panel-label">Инвентарь</div>
+        <div class="inventory-zone" id="inventory-zone" role="list" aria-label="Доступные блоки"></div>
+      </div>
+      <div id="code-mode" class="code-panel" style="display:none">
+        <div class="panel-label">Напиши HTML</div>
+        <textarea id="code-editor" placeholder="&lt;h1&gt;...&lt;/h1&gt;" aria-label="Редактор HTML"></textarea>
+      </div>
+      <div class="hints-row" id="hints-row"></div>
+      <div id="hint-text" style="display:none;background:#2e1065;color:#e9d5ff;padding:8px;border-radius:6px;font-size:.85rem" role="status"></div>
+    </div>
+    <div class="actions" role="toolbar" aria-label="Действия миссии">
+      <button class="btn btn-primary" id="btn-run" onclick="runCode()" title="Показать результат в preview">▶ Запустить</button>
+      <button class="btn btn-check" id="btn-check" onclick="checkMission()" disabled title="Сначала запусти код">✓ Проверить</button>
+      <button class="btn btn-success" id="btn-complete" onclick="finishMission()" disabled title="Сначала пройди проверку">★ Завершить</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetWorkspace()" title="Сбросить сборку">↺ Сброс</button>
+      <button class="btn btn-ghost btn-sm" id="btn-hint" onclick="showHint()" title="Подсказка">💡 Подсказка</button>
+      <div class="flow-hint" id="flow-hint">① Запусти → ② Проверь → ③ Заверши</div>
+    </div>
+  </div>
+<div class="mission-right">
+    <div class="preview-wrap">
+      <div class="preview-label">👁 Live Preview · <span id="exec-status" style="color:var(--muted)">ожидание</span></div>
+      <div class="preview-frame"><iframe id="preview-frame" sandbox="allow-same-origin"></iframe></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-success"><div class="modal" id="modal-success-inner"></div></div>
+<div class="modal-overlay" id="modal-login">
+  <div class="modal" style="max-width:380px;text-align:left">
+    <div style="text-align:center;font-size:2rem;margin-bottom:8px">🔐</div>
+    <h2 style="text-align:center">Вход ученика</h2>
+    <p style="color:var(--muted);font-size:.85rem;text-align:center;margin-bottom:16px">Прогресс сохраняется в облаке (таблица web_quest)</p>
+    <label style="font-size:.72rem;color:var(--muted)">Логин</label>
+    <input class="login-field" id="login-input" autocomplete="username" placeholder="логин">
+    <label style="font-size:.72rem;color:var(--muted)">Пароль</label>
+    <input class="login-field" id="password-input" type="password" autocomplete="current-password" placeholder="пароль">
+    <p id="login-error" style="color:#ff4d6d;font-size:.8rem;min-height:1.2em"></p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeLoginModal()">Отмена</button>
+      <button class="btn btn-primary" style="flex:1" onclick="submitLogin()">Войти</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+
+const WORLD_META = [
+{id:1,name:"Tag Town",theme:"HTML: заголовки, абзацы, важное",emoji:"🏷️",skill:"html_text"},
+{id:2,name:"List Lagoon",theme:"HTML: списки",emoji:"📋",skill:"html_lists"},
+{id:3,name:"Link Bridge",theme:"HTML: ссылки и картинки",emoji:"🔗",skill:"html_links"},
+{id:4,name:"Semantic City",theme:"HTML: структура страницы",emoji:"🏛️",skill:"html_semantic"},
+{id:5,name:"Form Fields",theme:"HTML: формы",emoji:"📝",skill:"html_forms"},
+{id:6,name:"Style Station",theme:"CSS: текст и цвет",emoji:"🎨",skill:"css_text"},
+{id:7,name:"Box Workshop",theme:"CSS: коробочная модель",emoji:"📦",skill:"css_box"},
+{id:8,name:"Class Canyon",theme:"CSS: селекторы class и id",emoji:"🎯",skill:"css_selectors"},
+{id:9,name:"Flex Forest",theme:"CSS: flexbox",emoji:"🌲",skill:"css_flex"},
+{id:10,name:"Grid Grove",theme:"CSS: grid",emoji:"⊞",skill:"css_grid"},
+{id:11,name:"Position Peak",theme:"CSS: position",emoji:"📍",skill:"css_position"},
+{id:12,name:"Web Citadel",theme:"Финал: пиши CSS сам",emoji:"👑",skill:"final"},
+];
+
+/* Что делает каждый тег / свойство — показывается ученику после успеха */
+const TAGINFO = {h1:"главный заголовок страницы",h2:"подзаголовок",p:"абзац текста",strong:"важное (жирное) слово",
+ ul:"список без номеров",ol:"нумерованный список",li:"пункт списка",a:"ссылка (href — куда ведёт)",
+ img:"картинка (src — файл, alt — описание)",header:"шапка сайта",nav:"блок навигации",main:"основное содержимое",
+ article:"самостоятельная статья",footer:"подвал сайта",label:"подпись к полю",input:"поле ввода (type — вид поля)",
+ button:"кнопка",form:"форма"};
+const PI = {color:"цвет текста","background-color":"цвет фона","font-size":"размер шрифта","font-weight":"толщина шрифта",
+ "text-align":"выравнивание текста",padding:"внутренний отступ (от текста до рамки)",margin:"внешний отступ (от соседей)",
+ border:"рамка (толщина, вид, цвет)","border-radius":"скругление углов",width:"ширина",display:"тип отображения",
+ "justify-content":"расстановка элементов по главной оси","align-items":"выравнивание по поперечной оси",
+ "flex-direction":"направление: ряд или колонка",gap:"промежуток между элементами","grid-template-columns":"колонки сетки",
+ position:"способ позиционирования",top:"сдвиг от верхнего края",right:"сдвиг от правого края",left:"сдвиг от левого края"};
+const BANKS = {
+ 6:{color:["red","blue","green","orange","white"],"background-color":["black","yellow","navy","white","pink"],"font-size":["14px","24px","40px","64px"],"font-weight":["normal","bold"],"text-align":["left","center","right"]},
+ 7:{padding:["0","10px","30px"],margin:["0","10px","40px"],border:["none","2px solid red","4px dashed blue"],"border-radius":["0","10px","50%"],width:["100px","200px","50%"]},
+ 8:{color:["red","blue","green","orange","white"],"background-color":["black","yellow","pink","white"],"font-weight":["normal","bold"],"font-size":["14px","24px"]},
+ 9:{display:["block","flex","grid"],"justify-content":["flex-start","center","space-between","flex-end"],"align-items":["stretch","center","flex-end"],"flex-direction":["row","column"],gap:["0","10px","30px"]},
+ 10:{display:["block","grid","flex"],"grid-template-columns":["1fr","1fr 1fr","1fr 1fr 1fr","100px 1fr"],gap:["0","10px","20px"]},
+ 11:{position:["static","relative","absolute"],top:["0","10px"],right:["0","10px"],left:["0","10px"],"background-color":["red","yellow","white"]},
+ 12:{color:["red","blue","white"],"text-align":["left","center","right"],border:["none","2px solid red"],padding:["0","20px"],display:["block","flex"],"justify-content":["flex-start","center"],gap:["0","20px"],position:["static","relative","absolute"],top:["0"],right:["0"],width:["200px"],"background-color":["yellow","red"]}
+};
+/* HTML-миры: [цель без названий тегов, эталон]. 5-е задание — писать код самому */
+const HP = {1:["h2","div","span","em"],2:["p","h2","div"],3:["a","p","h2","div"],4:["div","p","span"],5:["p","div","h2"]};
+const HS = {
+1:[["Название сайта «Кофейня Луна» — самая главная надпись страницы.","<h1>Кофейня Луна</h1>"],
+   ["Главное название «Мой кот», а под ним короткое описание «Рыжий и хитрый».","<h1>Мой кот</h1><p>Рыжий и хитрый</p>"],
+   ["Один абзац «Сегодня дождь». Слово «дождь» должно быть смыслово важным.","<p>Сегодня <strong>дождь</strong></p>"],
+   ["Название «Рецепт», подзаголовок 2-го уровня «Ингредиенты» и абзац «Мука и яйца».","<h1>Рецепт</h1><h2>Ингредиенты</h2><p>Мука и яйца</p>"],
+   ["Заголовок «Мой сайт» и абзац «Добро пожаловать», где слово «пожаловать» важное.","<h1>Мой сайт</h1><p>Добро <strong>пожаловать</strong></p>"]],
+2:[["Список покупок, порядок не важен: хлеб, молоко.","<ul><li>хлеб</li><li>молоко</li></ul>"],
+   ["Инструкция, где порядок важен: 1) Включи 2) Жди.","<ol><li>Включи</li><li>Жди</li></ol>"],
+   ["Подзаголовок «Меню» и список блюд без нумерации: суп, плов.","<h2>Меню</h2><ul><li>суп</li><li>плов</li></ul>"],
+   ["Абзац «Топ языков» и под ним рейтинг с номерами: Python, HTML, CSS.","<p>Топ языков</p><ol><li>Python</li><li>HTML</li><li>CSS</li></ol>"],
+   ["Подзаголовок «План» и нумерованные шаги «Встать», «Учиться».","<h2>План</h2><ol><li>Встать</li><li>Учиться</li></ol>"]],
+3:[["Ссылка с текстом «Google», ведущая на https://google.com","<a href=\"https://google.com\">Google</a>"],
+   ["Картинка из файла cat.png, для незрячих описание «Кот».","<img src=\"cat.png\" alt=\"Кот\">"],
+   ["Абзац «Смотри тут», где слово «тут» — ссылка на page.html.","<p>Смотри <a href=\"page.html\">тут</a></p>"],
+   ["Картинка dog.png (описание «Пёс») и рядом ссылка «Больше» на more.html.","<img src=\"dog.png\" alt=\"Пёс\"><a href=\"more.html\">Больше</a>"],
+   ["Абзац «Наш сайт здесь», где «здесь» — ссылка на site.html, и картинка logo.png с описанием «Логотип».","<p>Наш сайт <a href=\"site.html\">здесь</a></p><img src=\"logo.png\" alt=\"Логотип\">"]],
+4:[["Шапка сайта, в ней главный заголовок «Блог».","<header><h1>Блог</h1></header>"],
+   ["Блок навигации с одной ссылкой «Домой» на index.html.","<nav><a href=\"index.html\">Домой</a></nav>"],
+   ["Каркас: шапка «Сайт», основная часть с абзацем «Текст», подвал «2026».","<header>Сайт</header><main><p>Текст</p></main><footer>2026</footer>"],
+   ["Основная часть, в ней самостоятельная статья: подзаголовок «Новость» и абзац «Сегодня».","<main><article><h2>Новость</h2><p>Сегодня</p></article></main>"],
+   ["Шапка с навигацией (ссылка «Блог» на blog.html), основная часть со статьёй (подзаголовок «Привет»), подвал «Конец».","<header><nav><a href=\"blog.html\">Блог</a></nav></header><main><article><h2>Привет</h2></article></main><footer>Конец</footer>"]],
+5:[["Поле, куда пользователь вводит текст.","<input type=\"text\">"],
+   ["Подпись «Имя» и поле для текста.","<label>Имя</label><input type=\"text\">"],
+   ["Поле пароля (символы скрыты) и кнопка «Войти».","<input type=\"password\"><button>Войти</button>"],
+   ["Всё внутри формы: подпись «Email», поле для email, кнопка «Отправить».","<form><label>Email</label><input type=\"email\"><button>Отправить</button></form>"],
+   ["Форма: подпись «Логин», поле текста, кнопка «ОК».","<form><label>Логин</label><input type=\"text\"><button>ОК</button></form>"]]
+};
+/* CSS-миры: [цель, HTML, [[селектор, свойство, значение]], [не должно измениться], писать-CSS-руками, базовый CSS] */
+const CS = {
+6:[["Сделай заголовок красным.","<h1>Привет</h1><p>Мир</p>",[["h1","color","red"]]],
+   ["Абзац должен быть крупным (40px) и жирным.","<h1>Привет</h1><p>Мир</p>",[["p","font-size","40px"],["p","font-weight","bold"]]],
+   ["Заголовок по центру и на жёлтом фоне.","<h1>Привет</h1><p>Мир</p>",[["h1","text-align","center"],["h1","background-color","yellow"]]],
+   ["Заголовок синий и у правого края; абзац зелёный.","<h1>Привет</h1><p>Мир</p>",[["h1","color","blue"],["h1","text-align","right"],["p","color","green"]]],
+   ["Заголовок оранжевый, 64px. Абзац по центру, 24px, белый текст на чёрном фоне.","<h1>Привет</h1><p>Мир</p>",[["h1","color","orange"],["h1","font-size","64px"],["p","text-align","center"],["p","font-size","24px"],["p","color","white"],["p","background-color","black"]],[],1]],
+7:[["Между текстом и рамкой карточки должно быть просторно: 30px.","<div class=\"card\">Карточка</div>",[[".card","padding","30px"]],[],0,".card{background:#eee}"],
+   ["Рамка вокруг карточки: сплошная, красная, 2px.","<div class=\"card\">Карточка</div>",[[".card","border","2px solid red"]],[],0,".card{background:#eee}"],
+   ["Скругли углы на 10px и отодвинь карточку от соседей на 40px.","<div class=\"card\">Карточка</div>",[[".card","border-radius","10px"],[".card","margin","40px"]],[],0,".card{background:#eee}"],
+   ["Карточка шириной 200px, отступ текста от рамки 10px, рамка пунктирная синяя 4px.","<div class=\"card\">Карточка</div>",[[".card","width","200px"],[".card","padding","10px"],[".card","border","4px dashed blue"]],[],0,".card{background:#eee}"],
+   ["Ширина 50%, внутренний отступ 30px, внешний 10px, рамка 2px solid red, углы 10px.","<div class=\"card\">Карточка</div>",[[".card","width","50%"],[".card","padding","30px"],[".card","margin","10px"],[".card","border","2px solid red"],[".card","border-radius","10px"]],[],1,".card{background:#eee}"]],
+8:[["Покрась красным только абзацы A и B (у них общий класс).","<p class=\"note\">A</p><p class=\"note\">B</p><p id=\"main\">C</p><p>D</p>",[[".note","color","red"]],[["#main","color","red"],["p:last-child","color","red"]]],
+   ["Сделай жирным только абзац C — у него уникальное имя (id).","<p class=\"note\">A</p><p class=\"note\">B</p><p id=\"main\">C</p><p>D</p>",[["#main","font-weight","bold"]],[[".note","font-weight","bold"],["p:last-child","font-weight","bold"]]],
+   ["Все абзацы — жёлтый фон, а у класса note ещё и синий текст.","<p class=\"note\">A</p><p class=\"note\">B</p><p id=\"main\">C</p><p>D</p>",[["p","background-color","yellow"],[".note","color","blue"]],[["#main","color","blue"]]],
+   ["Абзац C: белый текст на чёрном фоне. Абзацы A и B: оранжевый текст.","<p class=\"note\">A</p><p class=\"note\">B</p><p id=\"main\">C</p><p>D</p>",[["#main","color","white"],["#main","background-color","black"],[".note","color","orange"]],[["p:last-child","color","orange"]]],
+   ["Класс note — красный жирный; id main — зелёный; все абзацы — 24px.","<p class=\"note\">A</p><p class=\"note\">B</p><p id=\"main\">C</p><p>D</p>",[[".note","color","red"],[".note","font-weight","bold"],["#main","color","green"],["p","font-size","24px"]],[],1]],
+9:[["Выстрой три блока в один ряд.","<div class=\"row\"><span>1</span><span>2</span><span>3</span></div>",[[".row","display","flex"]],[],0,".row span{display:block;border:1px solid #888;padding:6px}"],
+   ["Ряд блоков должен стоять по центру строки.","<div class=\"row\"><span>1</span><span>2</span><span>3</span></div>",[[".row","display","flex"],[".row","justify-content","center"]],[],0,".row span{display:block;border:1px solid #888;padding:6px}"],
+   ["Первый блок у левого края, последний у правого, между ними равные промежутки.","<div class=\"row\"><span>1</span><span>2</span><span>3</span></div>",[[".row","display","flex"],[".row","justify-content","space-between"]],[],0,".row span{display:block;border:1px solid #888;padding:6px}"],
+   ["Блоки друг под другом (колонка) с промежутком 30px.","<div class=\"row\"><span>1</span><span>2</span><span>3</span></div>",[[".row","display","flex"],[".row","flex-direction","column"],[".row","gap","30px"]],[],0,".row span{display:block;border:1px solid #888;padding:6px}"],
+   ["Ряд, блоки прижаты к правому краю, по вертикали по центру, промежуток 10px.","<div class=\"row\"><span>1</span><span>2</span><span>3</span></div>",[[".row","display","flex"],[".row","justify-content","flex-end"],[".row","align-items","center"],[".row","gap","10px"]],[],1,".row span{display:block;border:1px solid #888;padding:6px}"]],
+10:[["Сетка из 2 колонок одинаковой ширины.","<div class=\"grid\"><div>1</div><div>2</div><div>3</div><div>4</div></div>",[[".grid","display","grid"],[".grid","grid-template-columns","1fr 1fr"]],[],0,".grid div{border:1px solid #888;padding:6px}"],
+   ["3 колонки одинаковой ширины и промежуток 20px.","<div class=\"grid\"><div>1</div><div>2</div><div>3</div><div>4</div></div>",[[".grid","display","grid"],[".grid","grid-template-columns","1fr 1fr 1fr"],[".grid","gap","20px"]],[],0,".grid div{border:1px solid #888;padding:6px}"],
+   ["Левая колонка узкая (100px), правая занимает всё оставшееся место.","<div class=\"grid\"><div>1</div><div>2</div><div>3</div><div>4</div></div>",[[".grid","display","grid"],[".grid","grid-template-columns","100px 1fr"]],[],0,".grid div{border:1px solid #888;padding:6px}"],
+   ["Две равные колонки с промежутком 10px.","<div class=\"grid\"><div>1</div><div>2</div><div>3</div><div>4</div></div>",[[".grid","display","grid"],[".grid","grid-template-columns","1fr 1fr"],[".grid","gap","10px"]],[],0,".grid div{border:1px solid #888;padding:6px}"],
+   ["Три колонки одной ширины с промежутком 10px.","<div class=\"grid\"><div>1</div><div>2</div><div>3</div><div>4</div></div>",[[".grid","display","grid"],[".grid","grid-template-columns","1fr 1fr 1fr"],[".grid","gap","10px"]],[],1,".grid div{border:1px solid #888;padding:6px}"]],
+11:[["Бейдж «NEW» должен «прилипнуть» к правому верхнему углу коробки.","<div class=\"box\">Товар<span class=\"badge\">NEW</span></div>",[[".box","position","relative"],[".badge","position","absolute"],[".badge","top","0"],[".badge","right","0"]],[],0,".box{width:200px;height:80px;background:#ddd;margin:10px}"],
+   ["Бейдж в левом верхнем углу, в 10px от обоих краёв.","<div class=\"box\">Товар<span class=\"badge\">NEW</span></div>",[[".box","position","relative"],[".badge","position","absolute"],[".badge","top","10px"],[".badge","left","10px"]],[],0,".box{width:200px;height:80px;background:#ddd;margin:10px}"],
+   ["Красный бейдж в правом верхнем углу коробки.","<div class=\"box\">Товар<span class=\"badge\">NEW</span></div>",[[".box","position","relative"],[".badge","position","absolute"],[".badge","top","0"],[".badge","right","0"],[".badge","background-color","red"]],[],0,".box{width:200px;height:80px;background:#ddd;margin:10px}"],
+   ["Сдвинь саму коробку от её обычного места: на 10px вниз и на 10px вправо.","<div class=\"box\">Товар<span class=\"badge\">NEW</span></div>",[[".box","position","relative"],[".box","top","10px"],[".box","left","10px"]],[],0,".box{width:200px;height:80px;background:#ddd;margin:10px}"],
+   ["Жёлтый бейдж в левом верхнем углу (0 и 0) внутри коробки.","<div class=\"box\">Товар<span class=\"badge\">NEW</span></div>",[[".box","position","relative"],[".badge","position","absolute"],[".badge","top","0"],[".badge","left","0"],[".badge","background-color","yellow"]],[],1,".box{width:200px;height:80px;background:#ddd;margin:10px}"]],
+12:[["Заголовок по центру и синий; у .card рамка 2px solid red и внутренний отступ 20px.","<h1>Меню</h1><div class=\"card\"><p>Плов</p></div>",[["h1","text-align","center"],["h1","color","blue"],[".card","border","2px solid red"],[".card","padding","20px"]],[],1],
+   [".row — flex, по центру, промежуток 20px; блоки span — жёлтый фон.","<div class=\"row\"><span>A</span><span>B</span></div>",[[".row","display","flex"],[".row","justify-content","center"],[".row","gap","20px"],["span","background-color","yellow"]],[],1],
+   [".box — position relative, ширина 200px; .tag — absolute, top 0, right 0, белый текст на красном фоне.","<div class=\"box\">Товар<span class=\"tag\">SALE</span></div>",[[".box","position","relative"],[".box","width","200px"],[".tag","position","absolute"],[".tag","top","0"],[".tag","right","0"],[".tag","color","white"],[".tag","background-color","red"]],[],1]]
+};
+const DIFF=["easy","easy","medium","medium","hard"], REW={easy:20,medium:25,hard:35};
+function tokHTML(h){return h.match(/<[^>]+>|[^<]+/g)||[];}
+function tagsOf(h){return [...new Set((h.match(/<([a-z0-9]+)/g)||[]).map(x=>x.slice(1)))];}
+function mkHtmlTask(w,i,s){
+  const write=i===4, used=tagsOf(s[1]); let n=0;
+  const blocks=write?[]:tokHTML(s[1]).map(t=>({id:"b"+(++n),type:t[0]==="<"?"tag":"text",code:t,label:t.trim()||t}));
+  const distractors=[];
+  if(!write) HP[w].filter(p=>!used.includes(p)).slice(0,2).forEach(p=>distractors.push(
+    {id:"d"+p,type:"tag",code:"<"+p+">",label:"<"+p+">"},{id:"e"+p,type:"tag",code:"</"+p+">",label:"</"+p+">"}));
+  const d=DIFF[i];
+  return {id:`w${w}m${i+1}`,mode:write?"code":"block",difficulty:d,title:write?"Пиши сам":`Задание ${i+1}`,
+    instruction:s[0]+(write?" Напиши HTML вручную.":""),skills:used,reviewSkills:[],blocks,distractors,target:{html:s[1]},
+    hints:["Определи РОЛЬ каждого куска текста: заголовок? абзац? пункт списка? ссылка?","Понадобятся теги: "+used.map(u=>"<"+u+">").join(" ")+". Вспомни, за что отвечает каждый.","Эталон: "+s[1]],
+    rewards:{xp:REW[d],coins:10}};
+}
+function mkCssTask(w,i,s){
+  const write=!!s[4], d=DIFF[i]||"hard", want=s[2].map(([sel,prop,val])=>({sel,prop,val}));
+  const roles=[...new Set(want.map(x=>PI[x.prop]||x.prop))];
+  return {id:`w${w}m${i+1}`,mode:write?"csscode":"css",difficulty:d,title:write?"Пиши CSS сам":`Задание ${i+1}`,
+    instruction:s[0]+(write?" Напиши CSS вручную.":" Выбери селектор, свойство и значение."),
+    html:s[1],base:s[5]||"",want,nots:(s[3]||[]).map(([sel,prop,val])=>({sel,prop,val})),bank:BANKS[w],
+    skills:[...new Set(want.map(x=>x.prop))],reviewSkills:[],blocks:[],distractors:[],target:{html:s[1]},
+    hints:["КОГО меняем? Найди нужный элемент или класс в HTML — это селектор.","ЧТО меняем? Нужны свойства, отвечающие за: "+roles.join("; "),"Ответ: "+want.map(x=>`${x.sel}{${x.prop}:${x.val}}`).join(" ")],
+    rewards:{xp:REW[d]||35,coins:10}};
+}
+const TASKS_DATABASE = {};
+for(let w=1;w<=5;w++) TASKS_DATABASE[w]=HS[w].map((s,i)=>mkHtmlTask(w,i,s));
+for(let w=6;w<=12;w++) TASKS_DATABASE[w]=CS[w].map((s,i)=>mkCssTask(w,i,s));
+function worldSize(w){return (TASKS_DATABASE[w]||[]).length||5;}
+function explainTask(t){
+  if(t.want) return t.want.map(x=>`• ${x.sel} { ${x.prop}: ${x.val} } — ${PI[x.prop]||x.prop}`).join("\n");
+  return t.skills.map(k=>`• <${k}> — ${TAGINFO[k]||k}`).join("\n");
+}
+
+
+/* ===== STATE / AUTH / CLOUD (Python Quest pattern, table web_quest) ===== */
+const SCHEMA_VERSION = 2;
+const RANKS = [
+  {xp:0,name:"Web Novice"},{xp:60,name:"Tag Explorer"},{xp:150,name:"Markup Hacker"},
+  {xp:280,name:"Style Apprentice"},{xp:420,name:"Layout Guardian"},{xp:580,name:"Flex Sage"},
+  {xp:760,name:"Grid Overlord"},{xp:950,name:"Position Master"},{xp:1150,name:"Frontend Knight"},
+  {xp:1400,name:"Web Architect"}
+];
+const SKILL_KEYS = WORLD_META.map(w => w.skill);
+
+const SaveManager = {
+  default() {
+    return {
+      schemaVersion: SCHEMA_VERSION, studentId: null, updatedAt: null,
+      xp:0, coins:0, crystals:0, stars:0, unlockedWorld:1,
+      // null = progressive (1..unlockedWorld); array = admin fixed whitelist
+      allowedModules: null,
+      completed:{}, missions:{},
+      mastery: Object.fromEntries(SKILL_KEYS.map(k => [k, 0])),
+      achievements:[], streak:0, lastPlay:null, bestStreak:0,
+      stats:{totalAttempts:0,successfulAttempts:0,errors:0,hintsUsed:0,missionsCompleted:0},
+      settings:{sound:true}
+    };
+  },
+  migrate(raw) {
+    const d = Object.assign(this.default(), raw || {});
+    if (((raw && raw.schemaVersion) || 0) < 2) { d.completed = {}; d.missions = {}; d.unlockedWorld = 1; d.mastery = this.default().mastery; }
+    d.schemaVersion = SCHEMA_VERSION;
+    if (!d.stats) d.stats = this.default().stats;
+    if (!d.mastery) d.mastery = this.default().mastery;
+    if (!d.completed) d.completed = {};
+    if (!d.missions) d.missions = {};
+    // allowedModules: null = progressive; array = fixed by teacher
+    if (d.allowedModules != null && !Array.isArray(d.allowedModules)) d.allowedModules = null;
+    return d;
+  },
+  cacheKey(id) { return id ? ("wq_player_" + id) : null; },
+  loadCache(id) {
+    if (!id) return null;
+    try {
+      const raw = localStorage.getItem(this.cacheKey(id));
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (data.studentId && data.studentId !== id) return null;
+      return this.migrate(data);
+    } catch(e) { return null; }
+  },
+  saveCache(id, data) {
+    if (!id) return;
+    try {
+      localStorage.setItem(this.cacheKey(id), JSON.stringify(Object.assign({}, data, {
+        studentId:id, schemaVersion:SCHEMA_VERSION, updatedAt:new Date().toISOString()
+      })));
+    } catch(e) {}
+  },
+  clearCache(id) { if (id) try { localStorage.removeItem(this.cacheKey(id)); } catch(e) {} },
+  getRank(xp) {
+    let r = RANKS[0];
+    for (const rank of RANKS) if (xp >= rank.xp) r = rank;
+    return r;
+  }
+};
+
+
+/** Apply teacher unlock policy from DB row onto player state.
+ *  unlocked_modules: null/[] → progressive (1..unlockedWorld)
+ *  unlocked_modules: [1,2,5] → fixed whitelist; unlock only those worlds
+ *  Always CAPS unlockedWorld to max allowed (admin block works even if student had higher progress)
+ */
+function applyUnlockPolicy(loaded, unlocked_modules) {
+  const mods = Array.isArray(unlocked_modules)
+    ? unlocked_modules.map(Number).filter(n => n >= 1 && n <= WORLD_META.length)
+    : [];
+  if (mods.length > 0) {
+    // Fixed mode from admin
+    loaded.allowedModules = [...new Set(mods)].sort((a,b)=>a-b);
+    const maxAllowed = Math.max(...loaded.allowedModules);
+    // Cap — admin can BLOCK higher worlds the student already "had"
+    if ((loaded.unlockedWorld || 1) > maxAllowed) {
+      loaded.unlockedWorld = maxAllowed;
+    }
+    // Ensure at least the minimum allowed world is reachable
+    const minAllowed = Math.min(...loaded.allowedModules);
+    if ((loaded.unlockedWorld || 1) < minAllowed) {
+      loaded.unlockedWorld = minAllowed;
+    }
+  } else {
+    // Progressive mode
+    loaded.allowedModules = null;
+    if (!loaded.unlockedWorld || loaded.unlockedWorld < 1) loaded.unlockedWorld = 1;
+  }
+  return loaded;
+}
+
+function isWorldAccessible(worldId) {
+  const w = Number(worldId);
+  if (!w || w < 1 || w > WORLD_META.length) return false;
+  // Guest (no login): только мир 1 — как Python Quest
+  if (!AuthState.isAuthenticated || !AuthState.currentStudent) {
+    return w === 1;
+  }
+  if (Array.isArray(state.allowedModules) && state.allowedModules.length) {
+    // Fixed whitelist from teacher
+    return state.allowedModules.includes(w);
+  }
+  // Progressive: 1 .. unlockedWorld
+  return w <= (state.unlockedWorld || 1);
+}
+
+function isGuestMode() {
+  return !AuthState.isAuthenticated || !AuthState.currentStudent;
+}
+
+const AuthState = { currentStudent: null, isAuthenticated: false };
+let state = SaveManager.default();
+
+const MissionSession = {
+  currentWorld:1, currentMission:1, missionState:null,
+  assembly:[], inventory:[], hintLvl:0, dragId:null,
+  // pedagogical flow flags (Python Quest style)
+  codeExecuted:false, lastValidation:null, objectivePassed:false, lastHTML:"",
+  attempts:0, errorsCount:0,
+  clear() {
+    this.missionState = null; this.assembly = []; this.inventory = [];
+    this.hintLvl = 0; this.dragId = null;
+    this.codeExecuted = false; this.lastValidation = null; this.objectivePassed = false;
+    this.lastHTML = ""; this.attempts = 0; this.errorsCount = 0;
+    const ed = document.getElementById("code-editor");
+    if (ed) ed.value = "";
+  },
+  resetFlowFlags() {
+    this.codeExecuted = false; this.lastValidation = null; this.objectivePassed = false;
+    this.lastHTML = "";
+  }
+};
+
+const SUPABASE_URL = "https://hlvlcrkdmlfgynwahqwi.supabase.co";
+const SUPABASE_KEY = "sb_publishable_4BrlFeyAjXbhRrq_ID0V-w_iiLzkNsQ";
+const TABLE = "web_quest";
+let supabaseClient = null;
+
+const CloudSaveManager = {
+  uploadTimer:null, status:"idle", ownerId:null, cancelled:false,
+  init() {
+    try {
+      if (window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } catch(e) { console.warn(e); }
+  },
+  setStatus(s) {
+    this.status = s;
+    const el = document.getElementById("sync-indicator");
+    if (!el) return;
+    el.className = "sync-indicator " + (s==="synced"?"synced":s==="saving"?"saving":s==="offline"?"offline":s==="error"?"error":"synced");
+    const labels = {idle:"☁ Локально",saving:"⟳ Сохранение...",synced:"☁ Синхронизировано",offline:"⚠ Нет сети",error:"✕ Ошибка"};
+    el.textContent = labels[s] || labels.idle;
+  },
+  cancelPending() {
+    this.cancelled = true;
+    if (this.uploadTimer) { clearTimeout(this.uploadTimer); this.uploadTimer = null; }
+  },
+  scheduleUpload() {
+    if (!AuthState.currentStudent || !AuthState.isAuthenticated) return;
+    this.cancelled = false;
+    if (this.uploadTimer) clearTimeout(this.uploadTimer);
+    this.uploadTimer = setTimeout(() => this.upload(), 900);
+  },
+  async upload() {
+    if (this.cancelled) return;
+    const student = AuthState.currentStudent;
+    if (!student || !supabaseClient) return;
+    if (this.ownerId && this.ownerId !== student.id) return;
+    if (!navigator.onLine) { this.setStatus("offline"); return; }
+    this.setStatus("saving");
+    const snapshot = JSON.parse(JSON.stringify(state));
+    snapshot.studentId = student.id;
+    snapshot.schemaVersion = SCHEMA_VERSION;
+    snapshot.updatedAt = new Date().toISOString();
+    // Preserve teacher fixed list; only auto-fill progressive 1..unlockedWorld
+    let unlockedPayload;
+    if (Array.isArray(snapshot.allowedModules) && snapshot.allowedModules.length) {
+      unlockedPayload = [...snapshot.allowedModules];
+    } else {
+      // Progressive: store null so admin shows "по прогрессу"
+      unlockedPayload = null;
+    }
+    try {
+      const { error } = await supabaseClient.from(TABLE).update({
+        save_data: snapshot,
+        unlocked_modules: unlockedPayload,
+        updated_at: snapshot.updatedAt
+      }).eq("id", student.id);
+      if (this.cancelled) return;
+      if (error) throw error;
+      if (!AuthState.currentStudent || AuthState.currentStudent.id !== student.id) return;
+      this.setStatus("synced");
+      SaveManager.saveCache(student.id, snapshot);
+    } catch(e) {
+      console.error(e);
+      this.setStatus(navigator.onLine ? "error" : "offline");
+    }
+  },
+  async download(studentId) {
+    if (!supabaseClient) this.init();
+    if (!supabaseClient || !studentId) return { error: "no_client" };
+    try {
+      const { data, error } = await supabaseClient.from(TABLE)
+        .select("id,login,student_name,class,disabled,save_data,unlocked_modules")
+        .eq("id", studentId).maybeSingle();
+      if (error) return { error: "server", detail: error };
+      if (!data) return { error: "not_found" };
+      if (data.disabled) return { disabled: true };
+      return data;
+    } catch(e) { return { error: "network", detail: e }; }
+  }
+};
+
+function persistState() {
+  if (!AuthState.currentStudent || !AuthState.isAuthenticated) return;
+  if (state.studentId && state.studentId !== AuthState.currentStudent.id) return;
+  state.studentId = AuthState.currentStudent.id;
+  state.updatedAt = new Date().toISOString();
+  SaveManager.saveCache(AuthState.currentStudent.id, state);
+  CloudSaveManager.scheduleUpload();
+}
+
+async function sha256hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(text)));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+function openLoginModal() {
+  document.getElementById("login-error").textContent = "";
+  document.getElementById("login-input").value = "";
+  document.getElementById("password-input").value = "";
+  document.getElementById("modal-login").classList.add("show");
+}
+function closeLoginModal() { document.getElementById("modal-login").classList.remove("show"); }
+
+async function submitLogin() {
+  const login = (document.getElementById("login-input").value || "").trim();
+  const password = document.getElementById("password-input").value || "";
+  const errEl = document.getElementById("login-error");
+  if (!login || !password) { errEl.textContent = "Введите логин и пароль"; return; }
+  const res = await loginStudent(login, password);
+  if (res && res.ok) {
+    closeLoginModal();
+    showToast("Добро пожаловать, " + (AuthState.currentStudent.student_name || login) + "!");
+    updateAuthUI(); updateHomeStats(); updateMapHud();
+  } else errEl.textContent = (res && res.error) || "Ошибка входа";
+}
+
+async function loginStudent(login, password) {
+  clearPlayerState();
+  if (!supabaseClient) CloudSaveManager.init();
+  if (!supabaseClient) return { ok:false, error:"Нет подключения к облаку" };
+  const loginNorm = login.trim().toLowerCase();
+  const passHash = await sha256hex(password);
+  try {
+    let { data, error } = await supabaseClient.from(TABLE)
+      .select("id,login,student_name,class,disabled,save_data,unlocked_modules,password")
+      .eq("login", loginNorm).maybeSingle();
+    if (error) return { ok:false, error:"Ошибка сервера" };
+    if (!data) return { ok:false, error:"Ученик не найден" };
+    if (data.disabled) return { ok:false, error:"Доступ закрыт" };
+    const stored = String(data.password || "");
+    const match = stored === password || stored === passHash || stored.toLowerCase() === passHash;
+    if (!match) return { ok:false, error:"Неверный пароль" };
+    if (stored === password) {
+      try { await supabaseClient.from(TABLE).update({ password: passHash }).eq("id", data.id); } catch(_){}
+    }
+    AuthState.currentStudent = { id:data.id, login:data.login, student_name:data.student_name, class:data.class };
+    AuthState.isAuthenticated = true;
+    CloudSaveManager.ownerId = data.id;
+    CloudSaveManager.cancelled = false;
+    localStorage.setItem("wq_student_id", data.id);
+    localStorage.setItem("wq_student_login", data.login);
+    let loaded = null;
+    if (data.save_data && typeof data.save_data === "object" && Object.keys(data.save_data).length) {
+      loaded = SaveManager.migrate(data.save_data);
+    } else {
+      const cached = SaveManager.loadCache(data.id);
+      if (cached && cached.studentId === data.id) loaded = cached;
+    }
+    if (!loaded) loaded = SaveManager.default();
+    loaded.studentId = data.id;
+    // CRITICAL: apply admin unlock policy (can CAP / whitelist worlds)
+    applyUnlockPolicy(loaded, data.unlocked_modules);
+    state = loaded;
+    SaveManager.saveCache(data.id, state);
+    CloudSaveManager.setStatus("synced");
+    return { ok:true };
+  } catch(e) {
+    clearPlayerState();
+    return { ok:false, error:"Ошибка сети" };
+  }
+}
+
+function clearPlayerState() {
+  CloudSaveManager.cancelPending();
+  CloudSaveManager.ownerId = null;
+  MissionSession.clear();
+  if (AuthState.currentStudent) SaveManager.clearCache(AuthState.currentStudent.id);
+  const sid = localStorage.getItem("wq_student_id");
+  if (sid) SaveManager.clearCache(sid);
+  localStorage.removeItem("wq_student_id");
+  localStorage.removeItem("wq_student_login");
+  AuthState.currentStudent = null;
+  AuthState.isAuthenticated = false;
+  state = SaveManager.default();
+  state.unlockedWorld = 1;
+  state.allowedModules = null;
+  CloudSaveManager.setStatus("idle");
+}
+
+async function logoutStudent() {
+  try {
+    if (AuthState.currentStudent && AuthState.isAuthenticated) {
+      if (CloudSaveManager.uploadTimer) { clearTimeout(CloudSaveManager.uploadTimer); CloudSaveManager.uploadTimer = null; }
+      CloudSaveManager.cancelled = false;
+      await CloudSaveManager.upload();
+    }
+  } catch(e) {}
+  clearPlayerState();
+  updateAuthUI(); updateHomeStats(); updateMapHud();
+  showToast("Вы вышли");
+  showHome();
+}
+
+function updateAuthUI() {
+  const btnLogin = document.getElementById("btn-login");
+  const btnLogout = document.getElementById("btn-logout");
+  const status = document.getElementById("auth-status");
+  const guestBanner = document.getElementById("guest-banner");
+  if (AuthState.currentStudent && AuthState.isAuthenticated) {
+    btnLogin.style.display = "none";
+    btnLogout.style.display = "inline-flex";
+    if (status) status.textContent = AuthState.currentStudent.student_name || AuthState.currentStudent.login || "";
+    if (guestBanner) guestBanner.style.display = "none";
+  } else {
+    btnLogin.style.display = "inline-flex";
+    btnLogout.style.display = "none";
+    if (status) status.textContent = "Гость · мир 1";
+    if (guestBanner) guestBanner.style.display = "inline";
+  }
+}
+
+async function tryRestoreSession() {
+  const sid = localStorage.getItem("wq_student_id");
+  if (!sid) { state = SaveManager.default(); return; }
+  if (!supabaseClient) CloudSaveManager.init();
+  const data = await CloudSaveManager.download(sid);
+  if (data && data.error) {
+    const cached = SaveManager.loadCache(sid);
+    if (cached && (!cached.studentId || cached.studentId === sid)) {
+      AuthState.currentStudent = { id:sid, login:localStorage.getItem("wq_student_login")||"", student_name:null, class:null };
+      AuthState.isAuthenticated = true;
+      CloudSaveManager.ownerId = sid;
+      state = SaveManager.migrate(cached);
+      state.studentId = sid;
+      CloudSaveManager.setStatus(navigator.onLine ? "error" : "offline");
+      updateAuthUI(); updateHomeStats();
+      return;
+    }
+    clearPlayerState(); updateAuthUI(); return;
+  }
+  if (!data || data.disabled) { clearPlayerState(); updateAuthUI(); return; }
+  AuthState.currentStudent = { id:data.id, login:data.login, student_name:data.student_name, class:data.class };
+  AuthState.isAuthenticated = true;
+  CloudSaveManager.ownerId = data.id;
+  let loaded = null;
+  if (data.save_data && typeof data.save_data === "object" && Object.keys(data.save_data).length) {
+    loaded = SaveManager.migrate(data.save_data);
+  } else {
+    const cached = SaveManager.loadCache(data.id);
+    if (cached && cached.studentId === data.id) loaded = cached;
+  }
+  if (!loaded) loaded = SaveManager.default();
+  loaded.studentId = data.id;
+  applyUnlockPolicy(loaded, data.unlocked_modules);
+  state = loaded;
+  SaveManager.saveCache(data.id, state);
+  CloudSaveManager.setStatus("synced");
+  updateAuthUI(); updateHomeStats();
+}
+
+function countWorldDone(w) {
+  return Object.keys(state.completed || {}).filter(k => k.startsWith("w" + w + "m")).length;
+}
+
+/* ===== VALIDATOR ===== */
+const TaskValidator = {
+  normalizeStyle(styleStr) {
+    if (!styleStr) return "";
+    return styleStr.replace(/\s+/g," ").replace(/:\s+/g,":").replace(/;\s+/g,";").replace(/;$/g,"")
+      .trim().toLowerCase().split(";").filter(Boolean).map(s=>s.trim()).sort().join(";");
+  },
+  sanitizeHTML(html) {
+    return String(html||"").replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+  },
+  validateCSS(task, result) {
+    const doc = document.getElementById("preview-frame").contentDocument, win = doc.defaultView;
+    const LONG = {border:["border-top-width","border-top-style","border-top-color"],padding:["padding-top"],margin:["margin-top"],"border-radius":["border-top-left-radius"],gap:["row-gap","column-gap"]};
+    const val = (el, p) => { const cs = win.getComputedStyle(el); return (LONG[p]||[p]).map(x => cs.getPropertyValue(x)).join("|"); };
+    const probe = (el, p, v) => {
+      const pr = doc.createElement(el.tagName); pr.style.setProperty(p, v);
+      if (/^grid-/.test(p)) pr.style.display = "grid";
+      if (/^(top|left|right)$/.test(p)) pr.style.position = win.getComputedStyle(el).position;
+      (el.parentNode || doc.body).appendChild(pr); const r = val(pr, p); pr.remove(); return r;
+    };
+    for (const w of task.want) {
+      const el = doc.querySelector(w.sel);
+      if (!el) { result.errorType = "no-el"; result.feedback = `❌ Не найден элемент «${w.sel}». Проверь селектор.`; return result; }
+      if (val(el, w.prop) !== probe(el, w.prop, w.val)) {
+        result.errorType = "wrong-style";
+        result.feedback = `❌ Элемент «${w.sel}» выглядит не так, как в цели. Подумай: какое свойство отвечает за «${PI[w.prop] || w.prop}» и какое значение нужно?`;
+        return result;
+      }
+    }
+    for (const n of task.nots || []) {
+      const el = doc.querySelector(n.sel);
+      if (el && val(el, n.prop) === probe(el, n.prop, n.val)) {
+        result.errorType = "too-broad"; result.feedback = `❌ Стиль затронул лишний элемент «${n.sel}». Твой селектор слишком широкий.`; return result;
+      }
+    }
+    result.correct = true;
+    result.feedback = "🎯 Отлично! Вот что ты применил:\n" + explainTask(task);
+    return result;
+  },
+  validate(task, userHTML) {
+    const result = { correct:false, errorType:null, feedback:"" };
+    if (!userHTML || !userHTML.trim()) {
+      result.errorType = "empty";
+      result.feedback = "❌ Сборка пуста. Добавь блоки или напиши код.";
+      return result;
+    }
+    if (task.want) return this.validateCSS(task, result);
+    const sanitized = this.sanitizeHTML(userHTML);
+    const userDoc = new DOMParser().parseFromString(sanitized, "text/html");
+    const targetDoc = new DOMParser().parseFromString(task.target.html, "text/html");
+    const userElements = Array.from(userDoc.body.getElementsByTagName("*"));
+    const targetElements = Array.from(targetDoc.body.getElementsByTagName("*"));
+
+    if (userElements.length < targetElements.length) {
+      result.errorType = "missing-tag";
+      result.feedback = `❌ Не хватает элементов (нужно ${targetElements.length}, есть ${userElements.length}).`;
+      return result;
+    }
+    if (userElements.length > targetElements.length) {
+      result.errorType = "extra-element";
+      result.feedback = "❌ Лишние элементы. Убери ненужное.";
+      return result;
+    }
+    for (let i = 0; i < targetElements.length; i++) {
+      if (userElements[i].tagName !== targetElements[i].tagName) {
+        result.errorType = "wrong-tag";
+        result.feedback = `❌ Тег <${userElements[i].tagName.toLowerCase()}> вместо <${targetElements[i].tagName.toLowerCase()}>.`;
+        return result;
+      }
+    }
+    for (let i = 0; i < targetElements.length; i++) {
+      const up = userElements[i].parentElement, tp = targetElements[i].parentElement;
+      if ((up && up.tagName) !== (tp && tp.tagName)) {
+        result.errorType = "wrong-nesting";
+        result.feedback = `❌ Тег <${userElements[i].tagName.toLowerCase()}> стоит не там: проверь, что во что вложено.`;
+        return result;
+      }
+    }
+    const userText = userDoc.body.textContent.trim().replace(/\s+/g, " ");
+    const targetText = targetDoc.body.textContent.trim().replace(/\s+/g, " ");
+    if (userText !== targetText) {
+      result.errorType = "wrong-text";
+      result.feedback = `❌ Текст не совпадает.\nОжидалось: «${targetText}»\nПолучено: «${userText}»`;
+      return result;
+    }
+    for (let i = 0; i < targetElements.length; i++) {
+      const tEl = targetElements[i], uEl = userElements[i];
+      if (tEl.hasAttribute("href")) {
+        if (uEl.getAttribute("href") !== tEl.getAttribute("href")) {
+          result.errorType = "wrong-attr";
+          result.feedback = "❌ Неверный атрибут href.";
+          return result;
+        }
+      }
+      if (tEl.hasAttribute("src")) {
+        if (uEl.getAttribute("src") !== tEl.getAttribute("src")) {
+          result.errorType = "wrong-attr";
+          result.feedback = "❌ Неверный src.";
+          return result;
+        }
+      }
+      if (tEl.hasAttribute("alt")) {
+        if ((uEl.getAttribute("alt")||"") !== tEl.getAttribute("alt")) {
+          result.errorType = "wrong-attr";
+          result.feedback = "❌ Неверный alt.";
+          return result;
+        }
+      }
+      if (tEl.hasAttribute("class")) {
+        if ((uEl.getAttribute("class")||"") !== tEl.getAttribute("class")) {
+          result.errorType = "wrong-attr";
+          result.feedback = "❌ Неверный class.";
+          return result;
+        }
+      }
+      if (tEl.hasAttribute("id")) {
+        if ((uEl.getAttribute("id")||"") !== tEl.getAttribute("id")) {
+          result.errorType = "wrong-attr";
+          result.feedback = "❌ Неверный id.";
+          return result;
+        }
+      }
+      if (tEl.hasAttribute("type")) {
+        if ((uEl.getAttribute("type")||"") !== tEl.getAttribute("type")) {
+          result.errorType = "wrong-attr";
+          result.feedback = "❌ Неверный type.";
+          return result;
+        }
+      }
+      if (tEl.hasAttribute("style")) {
+        const es = this.normalizeStyle(tEl.getAttribute("style"));
+        const as = this.normalizeStyle(uEl.getAttribute("style") || "");
+        if (es !== as) {
+          result.errorType = "wrong-style";
+          result.feedback = `❌ Стиль не совпадает. Ожидалось: ${es}`;
+          return result;
+        }
+      }
+    }
+    result.correct = true;
+    result.feedback = "🎯 Отлично! Вот что ты применил:\n" + explainTask(task);
+    return result;
+  }
+};
+
+/* ===== UI ===== */
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2500);
+}
+function showHome() {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-home").classList.add("active");
+  updateHomeStats();
+}
+function showMap() {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-map").classList.add("active");
+  renderMap(); updateMapHud();
+}
+function updateHomeStats() {
+  document.getElementById("home-xp").textContent = state.xp || 0;
+  document.getElementById("home-coins").textContent = state.coins || 0;
+  document.getElementById("home-stars").textContent = state.stars || 0;
+  document.getElementById("home-rank").textContent = SaveManager.getRank(state.xp||0).name.split(" ").pop();
+  document.getElementById("home-streak").textContent = state.streak || 0;
+}
+function updateMapHud() {
+  document.getElementById("map-xp").textContent = state.xp || 0;
+  document.getElementById("map-coins").textContent = state.coins || 0;
+  document.getElementById("map-stars").textContent = state.stars || 0;
+  document.getElementById("map-streak").textContent = state.streak || 0;
+  document.getElementById("map-rank").textContent = SaveManager.getRank(state.xp||0).name;
+}
+function renderMap() {
+  const grid = document.getElementById("world-grid");
+  grid.innerHTML = "";
+  WORLD_META.forEach(w => {
+    const done = countWorldDone(w.id);
+    const locked = !isWorldAccessible(w.id);
+    const fixed = Array.isArray(state.allowedModules) && state.allowedModules.length;
+    const card = document.createElement("div");
+    card.className = "world-card" + (locked ? " locked" : "") + (done >= worldSize(w.id) ? " completed" : "");
+    card.innerHTML = `<div class="num">WORLD ${w.id}</div><h3>${w.emoji} ${w.name}</h3><div class="theme">${w.theme}</div>
+      <div class="world-progress"><div class="world-progress-bar" style="width:${(done/worldSize(w.id))*100}%"></div></div>
+      <div class="world-meta"><span>${done}/${worldSize(w.id)}</span><span>${locked?"🔒":(fixed?"✓":"▶")}</span></div>`;
+    if (!locked) card.onclick = () => openWorld(w.id);
+    else card.onclick = () => {
+      if (isGuestMode() && w.id > 1) {
+        showToast("Гостевой режим: доступен только мир 1. Войдите, чтобы продолжить.");
+        openLoginModal();
+      } else {
+        showToast(fixed ? "Мир закрыт учителем" : "Сначала пройди предыдущие миры");
+      }
+    };
+    grid.appendChild(card);
+  });
+}
+
+function openWorld(worldId) {
+  if (!isWorldAccessible(worldId)) {
+    if (isGuestMode() && worldId > 1) {
+      showToast("Войдите в аккаунт, чтобы открыть следующие миры");
+      openLoginModal();
+      return;
+    }
+    showToast(Array.isArray(state.allowedModules) && state.allowedModules.length
+      ? "Мир закрыт учителем" : "Мир ещё не открыт");
+    return;
+  }
+  if (!TASKS_DATABASE[worldId]) { showToast("Мир недоступен"); return; }
+  const tasks = TASKS_DATABASE[worldId];
+  let start = 1;
+  for (const t of tasks) {
+    const key = t.id; // w1m1
+    if (!state.completed[key]) { start = parseInt(key.replace(/^w\d+m/,""),10) || 1; break; }
+    start = parseInt(key.replace(/^w\d+m/,""),10) || 1;
+  }
+  openMission(worldId, start);
+}
+
+function openMission(worldId, missionId) {
+  const tasks = TASKS_DATABASE[worldId];
+  if (!tasks) return;
+  const task = tasks.find(t => t.id === "w" + worldId + "m" + missionId) || tasks[missionId - 1];
+  if (!task) return;
+  MissionSession.currentWorld = worldId;
+  MissionSession.currentMission = missionId;
+  MissionSession.hintLvl = 0;
+  MissionSession.assembly = [];
+  MissionSession.inventory = [...(task.blocks||[]), ...(task.distractors||[])].sort(() => Math.random() - 0.5);
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-mission").classList.add("active");
+  document.getElementById("m-title").textContent = task.title;
+  document.getElementById("m-meta").textContent = `${WORLD_META[worldId-1].name} · Миссия ${missionId}/${tasks.length} · ${task.difficulty}`;
+  document.getElementById("m-instruction").textContent = task.instruction;
+  const bar = document.getElementById("skills-bar");
+  bar.innerHTML = (task.skills||[]).map(s => `<span class="tag-skill">+${s}</span>`).join("");
+  document.getElementById("hint-text").style.display = "none";
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("exec-status").textContent = "ожидание";
+  document.getElementById("flow-hint").textContent = "① Запусти → ② Проверь результат → ③ Заверши миссию";
+  MissionSession.resetFlowFlags();
+  MissionSession.attempts = 0;
+  MissionSession.errorsCount = 0;
+  MissionSession.hintLvl = 0;
+  setMissionButtons({ run: true, check: false, complete: false });
+  const isCss = task.mode === "css", isCode = task.mode === "code" || task.mode === "csscode";
+  MissionSession.rules = [];
+  document.getElementById("blocks-mode").style.display = (isCode || isCss) ? "none" : "flex";
+  document.getElementById("code-mode").style.display = isCode ? "flex" : "none";
+  document.getElementById("css-mode").style.display = isCss ? "flex" : "none";
+  const fx = document.getElementById("fixed-html");
+  fx.style.display = (isCss || task.mode === "csscode") ? "block" : "none";
+  fx.textContent = task.html || "";
+  if (isCode) {
+    const ed = document.getElementById("code-editor");
+    ed.value = "";
+    ed.placeholder = task.mode === "csscode" ? "селектор { свойство: значение; }" : "<h1>...</h1>";
+    ed.oninput = () => onCodeStructureChanged();
+  } else if (isCss) { buildCssUI(task); }
+  else { renderAssembly(); renderInventory(); }
+  updatePreview("");
+}
+
+function exitMission() { MissionSession.clear(); showMap(); }
+
+function createBlockEl(block, inAssembly) {
+  const el = document.createElement("div");
+  el.className = "code-block" + (block.type === "tag" ? " tag" : block.type === "css-prop" ? " css-prop" : "");
+  el.textContent = block.label;
+  el.draggable = true;
+  el.ondragstart = e => { MissionSession.dragId = block.id; e.dataTransfer.setData("text/plain", block.id); };
+  el.onclick = () => {
+    if (inAssembly) removeFromAssembly(block.id);
+    else addToAssembly(block.id);
+  };
+  return el;
+}
+function renderAssembly() {
+  const zone = document.getElementById("assembly-zone");
+  zone.innerHTML = "";
+  if (!MissionSession.assembly.length) {
+    zone.innerHTML = '<span style="color:var(--muted);font-size:.82rem">Перетащи или кликни блоки...</span>';
+  } else {
+    MissionSession.assembly.forEach(b => zone.appendChild(createBlockEl(b, true)));
+  }
+  zone.ondragover = e => { e.preventDefault(); zone.classList.add("drag-over"); };
+  zone.ondragleave = () => zone.classList.remove("drag-over");
+  zone.ondrop = e => {
+    e.preventDefault(); zone.classList.remove("drag-over");
+    if (MissionSession.dragId) { addToAssembly(MissionSession.dragId); MissionSession.dragId = null; }
+  };
+}
+function renderInventory() {
+  const zone = document.getElementById("inventory-zone");
+  zone.innerHTML = "";
+  MissionSession.inventory.forEach(b => zone.appendChild(createBlockEl(b, false)));
+}
+function addToAssembly(id) {
+  const idx = MissionSession.inventory.findIndex(b => b.id === id);
+  if (idx === -1) return;
+  const [b] = MissionSession.inventory.splice(idx, 1);
+  MissionSession.assembly.push(b);
+  renderAssembly(); renderInventory();
+  onCodeStructureChanged();
+}
+function removeFromAssembly(id) {
+  const idx = MissionSession.assembly.findIndex(b => b.id === id);
+  if (idx === -1) return;
+  const [b] = MissionSession.assembly.splice(idx, 1);
+  MissionSession.inventory.push(b);
+  renderAssembly(); renderInventory();
+  onCodeStructureChanged();
+}
+function onCodeStructureChanged() {
+  if (!MissionSession.codeExecuted && !MissionSession.objectivePassed) return;
+  // Student changed blocks after run/check — require re-run
+  MissionSession.objectivePassed = false;
+  MissionSession.codeExecuted = false;
+  MissionSession.lastValidation = null;
+  setMissionButtons({ run: true, check: false, complete: false });
+  document.getElementById("flow-hint").textContent = "Сборка изменилась. ① Запусти → ② Проверь → ③ Заверши";
+  const fb = document.getElementById("feedback");
+  if (fb) {
+    fb.className = "feedback show";
+    fb.style.borderColor = "var(--gold)";
+    fb.style.color = "var(--text)";
+    fb.textContent = "Сборка изменилась — нажми «Запустить», чтобы обновить preview.";
+  }
+  document.getElementById("exec-status").textContent = "нужен повторный запуск";
+}
+function resetWorkspace() {
+  const task = getCurrentTask();
+  if (!task) return;
+  if (task.mode === "code" || task.mode === "csscode") document.getElementById("code-editor").value = "";
+  else if (task.mode === "css") { MissionSession.rules = []; renderRules(); }
+  else {
+    MissionSession.assembly = [];
+    MissionSession.inventory = [...(task.blocks||[]), ...(task.distractors||[])].sort(() => Math.random() - 0.5);
+    renderAssembly(); renderInventory();
+  }
+  updatePreview("");
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("exec-status").textContent = "ожидание";
+  document.getElementById("flow-hint").textContent = "① Запусти → ② Проверь результат → ③ Заверши миссию";
+  MissionSession.resetFlowFlags();
+  setMissionButtons({ run: true, check: false, complete: false });
+}
+function cssSelectors(h) {
+  const set = new Set((h.match(/<([a-z0-9]+)/g) || []).map(x => x.slice(1)));
+  (h.match(/class="([^"]+)"/g) || []).forEach(m => m.slice(7, -1).split(" ").forEach(c => set.add("." + c)));
+  (h.match(/id="([^"]+)"/g) || []).forEach(m => set.add("#" + m.slice(4, -1)));
+  return [...set];
+}
+function buildCssUI(task) {
+  const z = document.getElementById("css-mode"), o = a => a.map(x => `<option value="${x}">${x}</option>`).join("");
+  z.style.flexDirection = "column";
+  z.innerHTML = `<div class="panel-label">Твои CSS-правила</div><div id="css-rules"></div>
+    <div class="panel-label">Кого меняем → что → как</div>
+    <div class="css-row"><select id="cs-sel">${o(cssSelectors(task.html))}</select>
+    <select id="cs-prop">${o(Object.keys(task.bank))}</select><select id="cs-val"></select>
+    <button class="btn btn-primary btn-sm" onclick="addRule()">＋</button></div><div id="cs-info"></div>`;
+  const fill = () => { const p = document.getElementById("cs-prop").value;
+    document.getElementById("cs-val").innerHTML = o(task.bank[p]);
+    document.getElementById("cs-info").textContent = `${p} — ${PI[p] || ""}`; };
+  document.getElementById("cs-prop").onchange = fill; fill(); renderRules();
+}
+function renderRules() {
+  const z = document.getElementById("css-rules"); if (!z) return;
+  z.innerHTML = MissionSession.rules.length ? "" : '<span style="color:var(--muted);font-size:.82rem">Пока пусто — добавь правило</span>';
+  MissionSession.rules.forEach((r, i) => { const c = document.createElement("span"); c.className = "rule-chip";
+    c.textContent = `${r.sel} { ${r.prop}: ${r.val} } ✕`; c.onclick = () => { MissionSession.rules.splice(i, 1); renderRules(); onCodeStructureChanged(); }; z.appendChild(c); });
+}
+function addRule() {
+  const r = { sel: document.getElementById("cs-sel").value, prop: document.getElementById("cs-prop").value, val: document.getElementById("cs-val").value };
+  if (MissionSession.rules.some(x => x.sel === r.sel && x.prop === r.prop && x.val === r.val)) return;
+  MissionSession.rules.push(r); renderRules(); onCodeStructureChanged();
+}
+function getCurrentTask() {
+  const tasks = TASKS_DATABASE[MissionSession.currentWorld];
+  if (!tasks) return null;
+  return tasks.find(t => t.id === "w" + MissionSession.currentWorld + "m" + MissionSession.currentMission) || null;
+}
+function getUserHTML() {
+  const task = getCurrentTask();
+  if (!task) return "";
+  if (task.mode === "css" || task.mode === "csscode") {
+    const css = task.mode === "css" ? MissionSession.rules.map(r => `${r.sel}{${r.prop}:${r.val}}`).join("") : document.getElementById("code-editor").value;
+    return css.trim() ? `<style>${task.base || ""}${css}</style>${task.html}` : "";
+  }
+  if (task.mode === "code") return document.getElementById("code-editor").value || "";
+  return MissionSession.assembly.map(b => b.code).join("");
+}
+function updatePreview(html) {
+  const iframe = document.getElementById("preview-frame");
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><style>body{font-family:sans-serif;padding:12px;margin:0}</style></head><body>${TaskValidator.sanitizeHTML(html)}</body></html>`);
+  doc.close();
+}
+function showHint() {
+  const task = getCurrentTask();
+  if (!task || !task.hints) return;
+  if (MissionSession.hintLvl >= task.hints.length) { showToast("Подсказки закончились"); return; }
+  MissionSession.hintLvl++;
+  state.stats.hintsUsed++;
+  const box = document.getElementById("hint-text");
+  box.style.display = "block";
+  box.textContent = "💡 " + task.hints[MissionSession.hintLvl - 1];
+  persistState();
+}
+function setMissionButtons({ run, check, complete }) {
+  const br = document.getElementById("btn-run");
+  const bc = document.getElementById("btn-check");
+  const bf = document.getElementById("btn-complete");
+  if (br) br.disabled = !run;
+  if (bc) bc.disabled = !check;
+  if (bf) bf.disabled = !complete;
+}
+
+/** ① RUN — always show preview, never auto-complete */
+function runCode() {
+  const task = getCurrentTask();
+  if (!task) return;
+  const userHTML = getUserHTML();
+  if (!userHTML.trim()) {
+    showToast("Сначала собери или напиши код");
+    return;
+  }
+  MissionSession.attempts++;
+  state.stats.totalAttempts++;
+  MissionSession.lastHTML = userHTML;
+  MissionSession.codeExecuted = true;
+  MissionSession.objectivePassed = false;
+  MissionSession.lastValidation = null;
+
+  updatePreview(userHTML);
+  document.getElementById("exec-status").textContent = "▶ показано в preview";
+  document.getElementById("flow-hint").textContent = "Результат на экране. Нажми «✓ Проверить результат».";
+
+  const fb = document.getElementById("feedback");
+  fb.className = "feedback show";
+  fb.style.borderColor = "var(--cyan)";
+  fb.style.color = "var(--text)";
+  fb.textContent = "👁 Код отображён в Live Preview. Теперь нажми «Проверить результат», чтобы сверить с заданием.";
+
+  // Invalidate previous pass if code changed after a successful check
+  setMissionButtons({ run: true, check: true, complete: false });
+  persistState();
+}
+
+/** ② CHECK — validate; enable Complete only if correct */
+function checkMission() {
+  const task = getCurrentTask();
+  if (!task) return;
+  if (!MissionSession.codeExecuted) {
+    showToast("Сначала нажми «Запустить»");
+    return;
+  }
+  // Re-read HTML in case user changed assembly after run without re-running
+  const userHTML = getUserHTML();
+  if (userHTML !== MissionSession.lastHTML) {
+    // Code changed after last run — force re-run so student sees what will be checked
+    showToast("Код изменился — сначала снова «Запустить»");
+    MissionSession.codeExecuted = false;
+    MissionSession.objectivePassed = false;
+    setMissionButtons({ run: true, check: false, complete: false });
+    document.getElementById("flow-hint").textContent = "Код изменился. ① Запусти снова → ② Проверь → ③ Заверши";
+    const fb = document.getElementById("feedback");
+    fb.className = "feedback show fail";
+    fb.textContent = "⚠ Ты изменил код после запуска. Нажми «Запустить», чтобы обновить preview, затем «Проверить».";
+    return;
+  }
+
+  const validation = TaskValidator.validate(task, userHTML);
+  MissionSession.lastValidation = validation;
+  const fb = document.getElementById("feedback");
+
+  if (validation.correct) {
+    MissionSession.objectivePassed = true;
+    state.stats.successfulAttempts++;
+    fb.className = "feedback show ok";
+    fb.textContent = validation.feedback + " Нажми «★ Завершить», чтобы получить награду.";
+    document.getElementById("exec-status").textContent = "✓ проверка пройдена";
+    document.getElementById("flow-hint").textContent = "✓ Верно! Нажми «★ Завершить».";
+    setMissionButtons({ run: true, check: true, complete: true });
+    showToast("Цель выполнена!");
+  } else {
+    MissionSession.objectivePassed = false;
+    MissionSession.errorsCount++;
+    state.stats.errors++;
+    fb.className = "feedback show fail";
+    fb.textContent = validation.feedback;
+    document.getElementById("exec-status").textContent = "✗ нужно исправить";
+    document.getElementById("flow-hint").textContent = "Исправь код → ① Запусти → ② Проверь снова";
+    setMissionButtons({ run: true, check: true, complete: false });
+    showToast("Пока неверно — смотри подсказку в панели");
+  }
+  persistState();
+}
+
+/** ③ COMPLETE — awards only after successful check */
+function finishMission() {
+  const task = getCurrentTask();
+  if (!task) return;
+  if (!MissionSession.codeExecuted) {
+    showToast("Сначала запусти код");
+    return;
+  }
+  if (!MissionSession.objectivePassed || !MissionSession.lastValidation || !MissionSession.lastValidation.correct) {
+    showToast("Сначала пройди проверку результата");
+    return;
+  }
+  // Safety: code must still match what was validated
+  if (getUserHTML() !== MissionSession.lastHTML) {
+    showToast("Код изменился — запусти и проверь снова");
+    MissionSession.objectivePassed = false;
+    setMissionButtons({ run: true, check: false, complete: false });
+    return;
+  }
+  awardAndShowModal(task);
+}
+
+function awardAndShowModal(task) {
+  const key = task.id;
+  const isFirst = !state.completed[key];
+  let xp = 0, coins = 0;
+  if (isFirst) {
+    xp = task.rewards.xp;
+    coins = task.rewards.coins;
+    // small bonus for no hints / first try feel
+    if (MissionSession.hintLvl === 0) { xp += 3; coins += 2; }
+    if (MissionSession.errorsCount === 0) { xp += 2; }
+    state.xp += xp;
+    state.coins += coins;
+    state.stars += 1;
+    state.completed[key] = true;
+    state.stats.missionsCompleted++;
+    state.missions[key] = {
+      attempts: MissionSession.attempts,
+      hintsUsed: MissionSession.hintLvl,
+      errors: MissionSession.errorsCount
+    };
+    const skill = WORLD_META[MissionSession.currentWorld - 1]?.skill;
+    if (skill) {
+      let gain = MissionSession.hintLvl === 0 ? 8 : (MissionSession.hintLvl === 1 ? 5 : 3);
+      state.mastery[skill] = Math.min(100, (state.mastery[skill] || 0) + gain);
+    }
+    if (countWorldDone(MissionSession.currentWorld) >= worldSize(MissionSession.currentWorld) &&
+        MissionSession.currentWorld < WORLD_META.length) {
+      const next = MissionSession.currentWorld + 1;
+      if (isGuestMode()) {
+        // Guest: never unlock beyond world 1
+        state.unlockedWorld = 1;
+      } else if (Array.isArray(state.allowedModules) && state.allowedModules.length) {
+        if (state.allowedModules.includes(next) && next > (state.unlockedWorld || 1)) {
+          state.unlockedWorld = next;
+        } else if (state.allowedModules.includes(MissionSession.currentWorld)) {
+          state.unlockedWorld = Math.max(state.unlockedWorld || 1, MissionSession.currentWorld);
+        }
+      } else {
+        if ((state.unlockedWorld || 1) === MissionSession.currentWorld) {
+          state.unlockedWorld = next;
+        }
+      }
+    }
+  } else {
+    xp = 2;
+    state.xp += 2;
+  }
+  const today = new Date().toISOString().slice(0,10);
+  if (state.lastPlay !== today) {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    state.streak = state.lastPlay === yesterday ? (state.streak||0)+1 : 1;
+    state.lastPlay = today;
+  }
+  persistState();
+  if (isGuestMode()) {
+    showToast("Гостевой режим: прогресс не сохраняется. Войдите, чтобы продолжить.");
+  }
+
+  const inner = document.getElementById("modal-success-inner");
+  const worldDone = countWorldDone(MissionSession.currentWorld) >= worldSize(MissionSession.currentWorld);
+  const bonusBits = [];
+  if (isFirst && MissionSession.hintLvl === 0) bonusBits.push("Без подсказок");
+  if (isFirst && MissionSession.errorsCount === 0) bonusBits.push("Без ошибок");
+  const bonusHtml = bonusBits.length
+    ? `<p style="color:var(--cyan);font-size:.85rem;margin-top:6px">🏆 ${bonusBits.join(" · ")}</p>` : "";
+  const guestNote = isGuestMode()
+    ? (worldDone
+        ? `<p style="color:var(--gold);font-size:.85rem;margin-top:8px">Гость: мир 1 пройден. <strong>Войдите</strong>, чтобы открыть следующие миры и сохранить прогресс.</p>
+           <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="document.getElementById('modal-success').classList.remove('show');openLoginModal()">🔐 Войти</button>`
+        : `<p style="color:var(--muted);font-size:.8rem;margin-top:6px">Гостевой режим · доступен только мир 1 · прогресс не в облаке</p>`)
+    : "";
+  inner.innerHTML = `<div style="font-size:2.2rem">${task.difficulty==="boss"?"👑":"🎉"}</div>
+    <h2>${isFirst?"Миссия пройдена!":"Повтор"}</h2>
+    <p style="color:var(--muted)">${task.title}</p>
+    <p style="color:var(--green);font-weight:700;margin:12px 0">⭐ +${xp} XP · 🪙 +${isFirst?coins:0}</p>
+    <p style="font-size:.8rem;color:var(--muted)">Попыток запуска: ${MissionSession.attempts} · Ошибок проверки: ${MissionSession.errorsCount} · Подсказок: ${MissionSession.hintLvl}/3</p>
+    ${bonusHtml}${guestNote}
+    <button class="btn btn-primary btn-lg" style="width:100%;margin-top:12px" onclick="afterSuccess(${worldDone})">${isGuestMode() && worldDone ? "На карту" : "Продолжить →"}</button>`;
+  document.getElementById("modal-success").classList.add("show");
+  setMissionButtons({ run: false, check: false, complete: false });
+}
+
+function afterSuccess(worldDone) {
+  document.getElementById("modal-success").classList.remove("show");
+  if (worldDone) {
+    showToast("Мир завершён! Новый мир открыт.");
+    showMap();
+    return;
+  }
+  if (MissionSession.currentMission < worldSize(MissionSession.currentWorld)) {
+    openMission(MissionSession.currentWorld, MissionSession.currentMission + 1);
+  } else showMap();
+}
+
+/* BOOT */
+CloudSaveManager.init();
+state = SaveManager.default();
+// Guest default: only module 1 (Python Quest parity)
+state.unlockedWorld = 1;
+state.allowedModules = null;
+updateHomeStats();
+updateAuthUI();
+document.getElementById("login-input")?.addEventListener("keydown", e => { if (e.key==="Enter") document.getElementById("password-input").focus(); });
+document.getElementById("password-input")?.addEventListener("keydown", e => { if (e.key==="Enter") submitLogin(); });
+window.addEventListener("online", () => { if (AuthState.isAuthenticated) CloudSaveManager.scheduleUpload(); });
+window.addEventListener("offline", () => CloudSaveManager.setStatus("offline"));
+tryRestoreSession().then(() => { updateHomeStats(); updateAuthUI(); }).catch(()=>{});
+</script>
+</body>
+</html>
