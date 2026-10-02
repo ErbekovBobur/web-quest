@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
-<meta name="version" content="4.3">
-<title>Web Quest Infinity v4.3</title>
+<meta name="version" content="4.2">
+<title>Web Quest Infinity v4.2</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -282,7 +282,7 @@ input.login-field{width:100%;padding:12px;border-radius:10px;border:1px solid rg
       <span class="avatar-slot cloak" id="avatar-cloak"></span>
       <span class="avatar-slot emblem" id="avatar-emblem"></span>
     </div>
-    <h1>Web Quest Infinity v4.3</h1>
+    <h1>Web Quest Infinity v4.2</h1>
     <p>Стань архитектором веба.<br>Изучай HTML &amp; CSS через миссии и живой preview.<br><span style="font-size:.8rem;color:var(--cyan)">30 миров · 540 заданий · HTML и CSS</span><br><span id="guest-banner" style="font-size:.78rem;color:var(--gold);display:none">Гость: доступен только мир 1 · войдите, чтобы сохранить прогресс</span></p>
     <div class="home-stats">
       <div class="home-stat"><div class="val" id="home-xp">0</div><div class="lbl">XP</div></div>
@@ -549,97 +549,77 @@ const COMMON_HTML_MISTAKES = {
   button:"Частая ошибка: используют ссылку вместо кнопки действия.",
   textarea:"Частая ошибка: input вместо textarea для длинного текста."
 };
-/* Hint reward multipliers: 0 hints=1.0, L1=0.85, L2=0.65, L3=0.40 */
-const HINT_MULT = [1.0, 0.85, 0.65, 0.40];
-function getHintMultiplier(hintLvl) {
-  const lvl = Math.min(Math.max(0, hintLvl|0), 3);
-  return HINT_MULT[lvl];
-}
-
 function htmlScaffold(html) {
+  // Structure with blanks: tag names → ___, keep nesting & text placeholders
   return html
     .replace(/<\/?([a-z0-9]+)(\s[^>]*)?>/gi, (m, tag, attrs) => {
       const t = tag.toLowerCase();
-      if (m.startsWith("</")) return `</...>`;
+      if (m.startsWith("</")) return `</___>`;
       if (VOID_TAGS.includes(t)) {
-        if (/src=/.test(attrs||"")) return `<... src="..." alt="...">`;
-        if (/type=/.test(attrs||"")) return `<... type="...">`;
-        if (/href=/.test(attrs||"")) return `<... href="...">`;
-        return `<...>`;
+        if (/src=/.test(attrs||"")) return `<___ src="___" alt="___">`;
+        if (/type=/.test(attrs||"")) return `<___ type="___">`;
+        if (/href=/.test(attrs||"")) return `<___ href="___">`;
+        return `<___>`;
       }
-      if (/href=/.test(attrs||"")) return `<... href="...">`;
-      if (/class=/.test(attrs||"")) return `<... class="...">`;
-      if (/id=/.test(attrs||"")) return `<... id="...">`;
-      return `<...>`;
+      if (/href=/.test(attrs||"")) return `<___ href="___">`;
+      if (/class=/.test(attrs||"")) return `<___ class="___">`;
+      if (/id=/.test(attrs||"")) return `<___ id="___">`;
+      return `<___>`;
     })
     .replace(/>([^<]{1,40})</g, ">…<");
 }
-
-/** 3-level Socratic hints for HTML — never full solution */
 function buildHtmlHints(used, html, goal) {
+  const roles = used.map(k => TAGINFO[k] || k).filter(Boolean);
   const unique = [...new Set(used)];
-  const roles = unique.map(k => TAGINFO[k] || k).filter(Boolean);
-  // L1 — concept question (no tag names as answers)
-  const l1 = unique.length === 1
-    ? `💬 Наводящий вопрос:\nКакой элемент по смыслу нужен здесь: «${(goal||"").slice(0,80)}»?\nПодумай о роли, а не о буквах кода.`
-    : unique.length === 2 && unique.includes("h1") && unique.includes("p")
-    ? `💬 Наводящий вопрос:\nКаким элементом выделяют самый главный заголовок страницы, а каким — обычный абзац текста?`
-    : unique.includes("ul") || unique.includes("ol")
-    ? `💬 Наводящий вопрос:\nКогда важен порядок шагов — нужен один вид списка, когда порядок не важен — другой. Что здесь важнее? Как оформляют каждый пункт?`
-    : unique.includes("a")
-    ? `💬 Наводящий вопрос:\nКак сделать так, чтобы по нажатию на текст человек перешёл на другую страницу? Что ещё нужно указать кроме текста ссылки?`
-    : unique.includes("img")
-    ? `💬 Наводящий вопрос:\nКак показать картинку? Что указать, чтобы браузер знал файл и что показать, если картинка не загрузилась?`
-    : unique.includes("table") || unique.includes("tr")
-    ? `💬 Наводящий вопрос:\nИз чего состоит таблица: как называются строки и ячейки? Чем заголовок колонки отличается от обычной ячейки?`
-    : `💬 Наводящий вопрос:\nКакие роли элементов здесь нужны (${roles.slice(0,3).join(", ") || "по условию"})?\nСначала назови роли своими словами — без кода.`;
-  // L2 — abstract syntax structure
-  const l2 = VOID_TAGS.some(v => unique.includes(v))
-    ? `📐 Структура синтаксиса:\nНекоторые теги одиночные (без пары): \`<имя_тега атрибут="...">\`\nПарные выглядят так: \`<имя_тега>содержимое</имя_тега>\`\nАтрибуты пишут только в открывающем теге.`
-    : `📐 Структура синтаксиса:\nПарный тег всегда «обнимает» содержимое:\n\`<имя_тега>Содержимое</имя_тега>\`\nНесколько элементов идут сверху вниз. Вложенность: внешний тег закрывается последним.`;
-  // L3 — fill-in-the-blanks (no real tag names / values from solution)
+  const mistake = unique.map(t => COMMON_HTML_MISTAKES[t]).filter(Boolean)[0]
+    || "Частая ошибка: теги открыли, но забыли закрыть в обратном порядке.";
+  const reflect = unique.length === 1
+    ? `Какой один элемент нужен, чтобы передать смысл: «${(goal||"").slice(0,60)}»?`
+    : `Сколько разных ролей элементов здесь? Что идёт сверху, что внутри?`;
+  // Level 1 — direction (no code, no tag names if possible)
+  const h1 = roles.length
+    ? `🧭 Направление\nПодумай, какие роли элементов нужны: ${roles.join("; ")}.\nНе спеши писать код — сначала реши, что за что отвечает.\n\n❓ ${reflect}`
+    : `🧭 Направление\nРазбей задание на части: что здесь главное, что пояснение, что список или ссылка?\n\n❓ ${reflect}`;
+  // Level 2 — search (technology hint, soft)
+  const h2 = unique.length
+    ? `🔍 Поиск\nТебе понадобятся элементы, связанные с: ${roles.slice(0,4).join(", ")}.\nВспомни теорию мира (📖) или названия тегов, которые уже собирал.\nНе подглядывай готовый код — назови теги сам.\n\n⚠️ ${mistake}`
+    : `🔍 Поиск\nВспомни изученные теги. Открой «📖 Теория», если забыл названия.\n\n⚠️ ${mistake}`;
+  // Level 3 — scaffold with blanks only
   const scaffold = htmlScaffold(html);
-  const l3 = `🧩 Заполни пропуски в шаблоне:\n${scaffold}\n\nВставь нужные имена тегов и значения атрибутов вместо \`...\`. Готовый ответ не подставляй — собери сам и проверь в preview.`;
-  return [l1, l2, l3];
+  const h3 = `🧱 Каркас\nСтруктура (пропуски вместо тегов и значений):\n${scaffold}\n\nПодставь нужные имена тегов и атрибуты. Готовый код сюда не подставляй — собери сам.`;
+  // Level 4 — logic, no full code
+  const order = unique.map(t => `${TAGINFO[t]||t}`).join(" → ");
+  const h4 = `🧠 Логика\nПорядок мысли:\n1) Определи роли: ${order || "по заданию"}.\n2) Открой тег → положи содержимое → закрой в обратном порядке.\n3) Атрибуты (href, src, alt, type…) пиши внутри открывающего тега.\n4) Запусти preview и сравни с условием.\n\nМикронамёк: если что-то «не там», проверь вложенность — родитель должен обнимать детей.`;
+  return [h1, h2, h3, h4];
 }
-
 function cssScaffold(want) {
-  if (!want || !want.length) return `... {\n  ...: ...;\n}`;
+  if (!want || !want.length) return "___ {\n  ___: ___;\n}";
   return want.map(x => {
-    // Blank values always; blank complex selectors; may keep simple tag as structure only
-    const sel = (x.sel.startsWith(".") || x.sel.startsWith("#") || /[: \[]/.test(x.sel)) ? "..." : x.sel;
-    // Blank property name on L3 for stronger Socratic mode — user asked for fill-in
-    // Keep property as structural hint only when single well-known role; always blank value
-    return `${sel} {\n  ...: ...;\n}`;
+    // Blank selector if complex, blank value always; can show prop family as role
+    const selBlank = x.sel.startsWith(".") || x.sel.startsWith("#") || x.sel.includes(":") || x.sel.includes(" ")
+      ? "___" : x.sel; // simple tag selectors can stay as structural hint
+    return `${selBlank} {\n  ${x.prop}: ___;\n}`;
   }).join("\n");
 }
-
-/** 3-level Socratic hints for CSS — never full solution */
 function buildCssHints(want, roles) {
   const props = [...new Set((want||[]).map(x => x.prop))];
+  const sels = [...new Set((want||[]).map(x => x.sel))];
   const roleText = (roles && roles.length) ? roles.join("; ") : props.map(p => PI[p]||p).join("; ");
-  // L1 — concept
-  let l1;
-  if (props.includes("color") && props.includes("background-color")) {
-    l1 = `💬 Наводящий вопрос:\nКакое свойство меняет цвет самого текста, а какое — цвет фона за текстом?`;
-  } else if (props.includes("margin") || props.includes("padding")) {
-    l1 = `💬 Наводящий вопрос:\nЧто отвечает за отступ снаружи элемента (до соседей), а что — за свободное место внутри, между рамкой и текстом?`;
-  } else if (props.includes("font-size") || props.includes("font-weight") || props.includes("font-family")) {
-    l1 = `💬 Наводящий вопрос:\nКак изменить размер букв? А толщину (жирность)? А сам шрифт?`;
-  } else if (props.includes("display") || props.includes("flex-direction") || props.includes("justify-content")) {
-    l1 = `💬 Наводящий вопрос:\nКак выстроить несколько блоков в ряд или колонку? Какое свойство включают на родителе, чтобы управлять детьми?`;
-  } else if (props.includes("position") || props.includes("top") || props.includes("left")) {
-    l1 = `💬 Наводящий вопрос:\nКак «прикрепить» бейдж к углу карточки? Кто должен быть точкой отсчёта — родитель или сам бейдж?`;
-  } else if (props.length === 1) {
-    l1 = `💬 Наводящий вопрос:\nКакое CSS-свойство отвечает за «${roleText}»? Вспомни теорию этого мира.`;
-  } else {
-    l1 = `💬 Наводящий вопрос:\nЧто именно нужно изменить во внешнем виде (${roleText})?\nСначала: кого выбираем (селектор), потом — какое свойство.`;
-  }
-  // L2 — abstract syntax
-  const l2 = `📐 Структура синтаксиса:\nВспомни общее CSS-правило:\n\`селектор { имя_свойства: значение; }\`\n\n• селектор — тег, .класс или #id из HTML\n• имя_свойства — что меняем\n• значение — как именно\nПодставь свои части вместо слов-заглушек.`;
-  // L3 — blanks only (no solution values)
-  const l3 = `🧩 Заполни пропуски в шаблоне:\n\`\`\`css\n${cssScaffold(want)}\n\`\`\`\nВставь селектор, имя свойства и значение вместо \`...\`. Проверь результат в Live Preview.`;
-  return [l1, l2, l3];
+  const reflect = props.length === 1
+    ? `Какое одно свойство меняет «${roleText}»?`
+    : `Сколько правил нужно? Сначала селектор (кого), потом свойство (что), потом значение (как).`;
+  const mistake = props.includes("margin") || props.includes("padding")
+    ? "Частая ошибка: путают margin (снаружи) и padding (внутри)."
+    : props.includes("color") && props.includes("background-color")
+    ? "Частая ошибка: color красит текст, background-color — фон. Не перепутай."
+    : sels.some(s => s.startsWith("#"))
+    ? "Частая ошибка: #id сильнее .class, а .class сильнее тега. Слишком широкий селектор красит лишнее."
+    : "Частая ошибка: правильное свойство, но неверный селектор — стиль попадает не на тот элемент.";
+  const h1 = `🧭 Направление\nНужно изменить внешний вид: ${roleText}.\nСначала ответь: КОГО меняем (селектор) и ЧТО именно меняем (свойство)?\nКод пока не пиши.\n\n❓ ${reflect}`;
+  const h2 = `🔍 Поиск\nСелектор ищи в HTML: тег, .класс или #id.\nСвойства связаны с: ${roleText}.\nВспомни названия из теории этого мира — они часто похожи на английские слова (color, size, align…).\n\n⚠️ ${mistake}`;
+  const h3 = `🧱 Каркас\nЗаполни пропуски (значения и точные селекторы — твой выбор):\n${cssScaffold(want)}\n\nПодставь селектор и значение. Не копируй «правильный ответ» — подбери сам и проверь в preview.`;
+  const h4 = `🧠 Логика\nХод решения:\n1) Найди в HTML элемент, который описан в задании.\n2) Запиши селектор (тег / .class / #id).\n3) Выбери свойство под роль: ${roleText}.\n4) Подбери значение и запусти preview.\n5) Если изменился лишний элемент — селектор слишком широкий.\n\nМикронамёк: одно правило = один селектор { свойство: значение; }.`;
+  return [h1, h2, h3, h4];
 }
 
 function htmlModule(w,m){
@@ -2152,52 +2132,50 @@ function updatePreview(html) {
   });
 }
 /**
- * 3-level Socratic hints. Never reveals full solution.
- * Multipliers: L0=100%, L1=85%, L2=65%, L3=40% of XP/Coins/Mastery.
+ * Adaptive hints (4 levels). Never reveals full solution code.
+ * Level unlock by voluntary request OR by consecutive check-errors:
+ *  0 errors → level 1 only available first
+ *  student can still open next levels manually (with soft confirm on 3–4)
+ *  After 1 fail: nudge level 1; 2 fails → level 2; 3 → level 3; 4+ → level 4
  */
 function showHint() {
   const task = getCurrentTask();
   if (!task || !task.hints || !task.hints.length) return;
-  const maxLvl = Math.min(task.hints.length, 3);
+  const maxLvl = task.hints.length; // 4
   if (MissionSession.hintLvl >= maxLvl) {
     showToast("Подсказки закончились. Перечитай условие и теорию 📖");
     return;
   }
-  const next = MissionSession.hintLvl + 1;
-  const multPct = Math.round(getHintMultiplier(next) * 100);
-  if (next >= 3) {
+  // Adaptive ceiling: don't jump to scaffold/logic too early without errors
+  const errors = MissionSession.errorsCount || 0;
+  const adaptiveMax = errors >= 4 ? 4 : errors >= 3 ? 3 : errors >= 2 ? 2 : errors >= 1 ? 2 : 1;
+  let next = MissionSession.hintLvl + 1;
+  // Allow voluntary deeper hints, but warn before scaffold (3) and logic (4)
+  if (next >= 4 && next > adaptiveMax) {
     const ok = confirm(
       next === 3
-        ? `Подсказка уровня 2 (структура). Награда за миссию станет ${multPct}%. Открыть?`
-        : `Подсказка уровня 3 (шаблон с пропусками). Награда за миссию станет ${multPct}%. Готовый код не выдаётся. Открыть?`
+        ? "Каркас покажет структуру с пропусками (не готовый код). Открыть?"
+        : "Подсказка объяснит ход мысли, но не даст готовый код. Открыть?"
     );
     if (!ok) return;
   }
   const hasFree = state.boosts && (state.boosts.freeHints || 0) > 0;
   const hintIndex = MissionSession.hintLvl;
+  MissionSession.hintLvl++;
   if (hasFree) {
     state.boosts.freeHints--;
-    showToast("💡 Бесплатная подсказка (осталось " + state.boosts.freeHints + ") — коэффициент не снижен");
-    // Show text but do not advance penalty level
+    // free hint does not burn "no-hints" bonus
+    MissionSession.hintLvl = Math.max(0, MissionSession.hintLvl - 1);
+    showToast("💡 Бесплатная подсказка (осталось " + state.boosts.freeHints + ")");
   } else {
-    MissionSession.hintLvl++;
     state.stats.hintsUsed++;
   }
-  const levelShown = hasFree ? (hintIndex + 1) : MissionSession.hintLvl;
-  const labels = ["Концепция", "Структура", "Шаблон"];
-  const warns = [
-    "⚠️ Использована подсказка Уровня 1. Коэффициент награды снижен до 85%.",
-    "⚠️ Использована подсказка Уровня 2. Коэффициент награды снижен до 65%.",
-    "⚠️ Использована подсказка Уровня 3. Коэффициент награды снижен до 40%."
-  ];
+  const labels = ["Направление", "Поиск", "Каркас", "Логика"];
   const box = document.getElementById("hint-text");
   box.style.display = "block";
   box.style.whiteSpace = "pre-wrap";
-  const warnLine = hasFree
-    ? "💚 Бесплатная подсказка — коэффициент награды не изменён."
-    : (warns[levelShown - 1] || warns[0]);
-  const body = task.hints[Math.min(hintIndex, maxLvl - 1)] || task.hints[0];
-  box.textContent = warnLine + "\n\n" + body;
+  const shownLvl = Math.min(hintIndex + 1, maxLvl);
+  box.textContent = "💡 " + (labels[hintIndex] || ("Подсказка " + shownLvl)) + " (" + shownLvl + "/" + maxLvl + ")\n\n" + task.hints[hintIndex];
   persistState();
 }
 function setMissionButtons({ run, check, complete }) {
@@ -2283,15 +2261,15 @@ function checkMission() {
     fb.className = "feedback show fail";
     let nudge = "";
     const ec = MissionSession.errorsCount;
-    if (ec === 1) nudge = "\n\n💭 Перечитай условие. О чём просят по смыслу — не копируй из памяти код.";
-    else if (ec === 2) nudge = "\n\n💡 Можно взять подсказку Уровня 1 (концепция) — награда ×85%.";
-    else if (ec === 3) nudge = "\n\n📐 Подсказка Уровня 2 покажет структуру синтаксиса (не готовый код) — награда ×65%.";
-    else if (ec >= 4) nudge = "\n\n🧩 Подсказка Уровня 3 — шаблон с пропусками `...` (ты заполняешь сам) — награда ×40%.";
+    if (ec === 1) nudge = "\n\n💭 Микронамёк: перечитай условие. Какая роль у нужного элемента?";
+    else if (ec === 2) nudge = "\n\n💡 Попробуй «Подсказка» — уровень «Направление» или «Поиск».";
+    else if (ec === 3) nudge = "\n\n🧱 Можно открыть «Каркас»: структура с пропусками, без готового кода.";
+    else if (ec >= 4) nudge = "\n\n🧠 Открой подсказку «Логика» — разберём ход мысли по шагам.";
     fb.textContent = validation.feedback + nudge;
     document.getElementById("exec-status").textContent = "✗ нужно исправить";
     document.getElementById("flow-hint").textContent = "Исправь код → ① Запусти → ② Проверь снова";
     setMissionButtons({ run: true, check: true, complete: false });
-    showToast(ec >= 3 ? "Подсказка направит мысль, но не решит за тебя" : "Пока неверно — подумай или возьми подсказку");
+    showToast(ec >= 3 ? "Подсказка поможет подумать, не решит за тебя" : "Пока неверно — подумай или возьми подсказку");
   }
   persistState();
 }
@@ -2322,17 +2300,12 @@ function awardAndShowModal(task) {
   const key = task.id;
   const isFirst = !state.completed[key];
   let xp = 0, coins = 0, crystalsGain = 0;
-  const hintMult = getHintMultiplier(MissionSession.hintLvl);
   if (isFirst) {
     xp = task.rewards.xp;
     coins = task.rewards.coins;
-    // Independence bonus only with zero paid hints
     if (MissionSession.hintLvl === 0) { xp += 3; coins += 2; }
     if (MissionSession.errorsCount === 0) { xp += 2; crystalsGain += 1; }
-    // Socratic hint multiplier on core rewards
-    xp = Math.round(xp * hintMult);
-    coins = Math.round(coins * hintMult);
-    // Shop XP boost (after hint mult)
+    // XP boost
     if (state.boosts && state.boosts.xpMissionsLeft > 0 && state.boosts.xpMultiplier > 1) {
       xp = Math.round(xp * state.boosts.xpMultiplier);
       state.boosts.xpMissionsLeft--;
@@ -2347,13 +2320,11 @@ function awardAndShowModal(task) {
     state.missions[key] = {
       attempts: MissionSession.attempts,
       hintsUsed: MissionSession.hintLvl,
-      hintMultiplier: hintMult,
       errors: MissionSession.errorsCount
     };
     const skill = WORLD_META[MissionSession.currentWorld - 1]?.skill;
     if (skill) {
-      let gain = Math.round(10 * hintMult); // 10 / 8.5 / 6.5 / 4 by hint depth
-      if (MissionSession.hintLvl === 0 && MissionSession.errorsCount === 0) gain += 2;
+      let gain = MissionSession.hintLvl === 0 ? 8 : (MissionSession.hintLvl === 1 ? 5 : 3);
       state.mastery[skill] = Math.min(100, (state.mastery[skill] || 0) + gain);
     }
     if (countWorldDone(MissionSession.currentWorld) >= worldSize(MissionSession.currentWorld) &&
@@ -2400,8 +2371,7 @@ function awardAndShowModal(task) {
   const inner = document.getElementById("modal-success-inner");
   const worldDone = countWorldDone(MissionSession.currentWorld) >= worldSize(MissionSession.currentWorld);
   const bonusBits = [];
-  if (isFirst && MissionSession.hintLvl === 0) bonusBits.push("Самостоятельно ×100%");
-  else if (isFirst && MissionSession.hintLvl > 0) bonusBits.push(`Подсказки L${MissionSession.hintLvl} → ×${Math.round(hintMult*100)}%`);
+  if (isFirst && MissionSession.hintLvl === 0) bonusBits.push("Без подсказок");
   if (isFirst && MissionSession.errorsCount === 0) bonusBits.push("Без ошибок");
   if (state.boosts && state.boosts.xpMultiplier > 1) bonusBits.push("Буст XP");
   const bonusHtml = bonusBits.length
@@ -2420,7 +2390,7 @@ function awardAndShowModal(task) {
     <p style="color:var(--green);font-weight:700;margin:12px 0">⭐ +${xp} XP · 🪙 +${isFirst?coins:0}${crystalLine}</p>
     <div class="rank-progress" style="max-width:200px;margin:0 auto 8px"><div class="rank-progress-bar" style="width:${rankInfo.pct}%"></div></div>
     <p style="font-size:.75rem;color:var(--muted)">${rankInfo.text}</p>
-    <p style="font-size:.8rem;color:var(--muted)">Попыток: ${MissionSession.attempts} · Ошибок: ${MissionSession.errorsCount} · Подсказки: L${MissionSession.hintLvl}/3 · Награда ×${Math.round(hintMult*100)}% · 🔥${state.streak||0}</p>
+    <p style="font-size:.8rem;color:var(--muted)">Попыток: ${MissionSession.attempts} · Ошибок: ${MissionSession.errorsCount} · Подсказок: ${MissionSession.hintLvl}/4 · 🔥${state.streak||0}</p>
     ${bonusHtml}${guestNote}
     <button class="btn btn-primary btn-lg" style="width:100%;margin-top:12px" onclick="afterSuccess(${worldDone})" id="btn-after">${isGuestMode() && worldDone ? "На карту" : "Продолжить →"}</button>`;
   document.getElementById("modal-success").classList.add("show");
