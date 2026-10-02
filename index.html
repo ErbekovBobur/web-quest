@@ -280,7 +280,7 @@ input.login-field{width:100%;padding:12px;border-radius:10px;border:1px solid rg
       <span id="avatar-emoji">🚀</span>
       <span class="avatar-slot crown" id="avatar-crown"></span>
       <span class="avatar-slot cloak" id="avatar-cloak"></span>
-      <span class="avatar-slot emblem" id="avatar-emblem"></span>
+      <!-- <span class="avatar-slot emblem" id="avatar-emblem"></span> -->
     </div>
     <h1>Web Quest Infinity v5.2</h1>
     <p>Стань архитектором веба.<br>Изучай HTML &amp; CSS через миссии и живой preview.<br><span style="font-size:.8rem;color:var(--cyan)">30 миров · 540 заданий · HTML и CSS</span><br><span id="guest-banner" style="font-size:.78rem;color:var(--gold);display:none">Гость: доступен только мир 1 · войдите, чтобы сохранить прогресс</span></p>
@@ -1207,7 +1207,7 @@ function renderAvatar() {
   };
   setSlot("avatar-crown", av.crown);
   setSlot("avatar-cloak", av.cloak);
-  setSlot("avatar-emblem", av.emblem);
+  // setSlot("avatar-emblem", av.emblem);
   if (preview) {
     preview.classList.toggle("has-aura", !!av.aura);
   }
